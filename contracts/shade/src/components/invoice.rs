@@ -766,8 +766,11 @@ pub fn pay_invoice_partial(env: &Env, payer: &Address, invoice_id: u64, amount: 
     };
     history::record_transaction(env, payer, transaction);
 
+    crate::components::auto_withdrawal::check_and_trigger_auto_withdrawal(env, invoice.merchant_id, &invoice.token);
+
     fee_amount
 }
+
 
 pub fn void_invoice(env: &Env, merchant_address: &Address, invoice_id: u64) {
     merchant_address.require_auth();

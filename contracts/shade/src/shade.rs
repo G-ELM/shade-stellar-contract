@@ -10,7 +10,7 @@ use crate::interface::ShadeTrait;
 use crate::types::{
     ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice, InvoiceFilter, Merchant,
     MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload,
-    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction,
+    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, TicketListing,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -572,4 +572,50 @@ impl ShadeTrait for Shade {
     fn get_token_market_share(env: Env, token: Address) -> i128 {
         admin_component::get_token_market_share(&env, &token)
     }
+
+    // --- Auto withdrawal ---
+    fn set_auto_withdrawal_threshold(env: Env, merchant_address: Address, token: Address, threshold: i128) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::auto_withdrawal::set_auto_withdrawal_threshold(&env, &merchant_address, &token, threshold);
+    }
+
+    fn get_auto_withdrawal_threshold(env: Env, merchant_id: u64, token: Address) -> Option<i128> {
+        crate::components::auto_withdrawal::get_auto_withdrawal_threshold(&env, merchant_id, &token)
+    }
+
+    fn set_auto_withdrawal_recipient(env: Env, merchant_address: Address, recipient: Address) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::auto_withdrawal::set_auto_withdrawal_recipient(&env, &merchant_address, &recipient);
+    }
+
+    fn get_auto_withdrawal_recipient(env: Env, merchant_id: u64) -> Option<Address> {
+        crate::components::auto_withdrawal::get_auto_withdrawal_recipient(&env, merchant_id)
+    }
+
+    // --- Escrow ---
+    fn claim_refund(env: Env, buyer: Address, invoice_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        invoice_component::claim_refund(&env, &buyer, invoice_id);
+    }
+
+    // --- Ticket Secondary Market ---
+    fn list_ticket(env: Env, seller: Address, ticket_id: u64, price: i128) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::event::list_ticket(&env, &seller, ticket_id, price);
+    }
+
+    fn cancel_ticket_listing(env: Env, seller: Address, ticket_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::event::cancel_ticket_listing(&env, &seller, ticket_id);
+    }
+
+    fn buy_ticket_from_listing(env: Env, buyer: Address, ticket_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::event::buy_ticket_from_listing(&env, &buyer, ticket_id);
+    }
+
+    fn get_ticket_listing(env: Env, ticket_id: u64) -> TicketListing {
+        crate::components::event::get_ticket_listing(&env, ticket_id)
+    }
 }
+

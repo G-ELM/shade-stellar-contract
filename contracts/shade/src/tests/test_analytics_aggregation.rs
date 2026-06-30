@@ -1,5 +1,8 @@
 #![cfg(test)]
 
+extern crate std;
+use std::{vec, format};
+
 use crate::shade::{Shade, ShadeClient};
 use crate::types::{MerchantAnalytics, MerchantAnalyticsSummary, TokenAnalytics};
 use soroban_sdk::testutils::{Address as _, Ledger, LedgerInfo};

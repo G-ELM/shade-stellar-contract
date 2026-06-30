@@ -50,7 +50,10 @@ pub enum DataKey {
     // --- Auto-withdrawal thresholds ---
     MerchantAutoWithdrawalThreshold(u64, Address),
     MerchantAutoWithdrawalRecipient(u64),
+    // --- Ticket Secondary Market ---
+    TicketListing(u64),
 }
+
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -369,3 +372,12 @@ pub struct AutoWithdrawalThreshold {
     pub token: Address,
     pub threshold: i128,
 }
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TicketListing {
+    pub ticket_id: u64,
+    pub seller: Address,
+    pub price: i128,
+}
+

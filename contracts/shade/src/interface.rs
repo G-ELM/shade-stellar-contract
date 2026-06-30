@@ -1,7 +1,7 @@
 use crate::types::{
     CrossChainBridgePayload, Event, Invoice, InvoiceFilter, Merchant, MerchantAnalytics,
     MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload, PendingFee, Role,
-    Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction
+    Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, TicketListing
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
 
@@ -234,4 +234,20 @@ pub trait ShadeTrait {
 
     /// Get market share of a token as basis points (10000 = 100%)
     fn get_token_market_share(env: Env, token: Address) -> i128;
+
+    // --- Auto withdrawal ---
+    fn set_auto_withdrawal_threshold(env: Env, merchant_address: Address, token: Address, threshold: i128);
+    fn get_auto_withdrawal_threshold(env: Env, merchant_id: u64, token: Address) -> Option<i128>;
+    fn set_auto_withdrawal_recipient(env: Env, merchant_address: Address, recipient: Address);
+    fn get_auto_withdrawal_recipient(env: Env, merchant_id: u64) -> Option<Address>;
+
+    // --- Escrow ---
+    fn claim_refund(env: Env, buyer: Address, invoice_id: u64);
+
+    // --- Ticket Secondary Market ---
+    fn list_ticket(env: Env, seller: Address, ticket_id: u64, price: i128);
+    fn cancel_ticket_listing(env: Env, seller: Address, ticket_id: u64);
+    fn buy_ticket_from_listing(env: Env, buyer: Address, ticket_id: u64);
+    fn get_ticket_listing(env: Env, ticket_id: u64) -> TicketListing;
 }
+

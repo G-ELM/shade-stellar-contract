@@ -1004,3 +1004,170 @@ pub fn publish_ticket_resold_event(
     }
     .publish(env);
 }
+
+#[contractevent]
+pub struct AutoWithdrawalThresholdSetEvent {
+    pub merchant_id: u64,
+    pub token: Address,
+    pub threshold: i128,
+}
+
+pub fn publish_auto_withdrawal_threshold_set_event(
+    env: &Env,
+    merchant_id: u64,
+    token: Address,
+    threshold: i128,
+) {
+    AutoWithdrawalThresholdSetEvent {
+        merchant_id,
+        token,
+        threshold,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct AutoWithdrawalRecipientSetEvent {
+    pub merchant_id: u64,
+    pub recipient: Address,
+}
+
+pub fn publish_auto_withdrawal_recipient_set_event(
+    env: &Env,
+    merchant_id: u64,
+    recipient: Address,
+) {
+    AutoWithdrawalRecipientSetEvent {
+        merchant_id,
+        recipient,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct AutoWithdrawalTriggeredEvent {
+    pub merchant_id: u64,
+    pub token: Address,
+    pub amount: i128,
+    pub recipient: Address,
+}
+
+pub fn publish_auto_withdrawal_triggered_event(
+    env: &Env,
+    merchant_id: u64,
+    token: Address,
+    amount: i128,
+    recipient: Address,
+) {
+    AutoWithdrawalTriggeredEvent {
+        merchant_id,
+        token,
+        amount,
+        recipient,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct EscrowExpiredRefundEvent {
+    pub invoice_id: u64,
+    pub buyer: Address,
+    pub amount: i128,
+    pub token: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_escrow_expired_refund_event(
+    env: &Env,
+    invoice_id: u64,
+    buyer: Address,
+    amount: i128,
+    token: Address,
+    timestamp: u64,
+) {
+    EscrowExpiredRefundEvent {
+        invoice_id,
+        buyer,
+        amount,
+        token,
+        timestamp,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct TicketListedEvent {
+    pub ticket_id: u64,
+    pub seller: Address,
+    pub price: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_ticket_listed_event(
+    env: &Env,
+    ticket_id: u64,
+    seller: Address,
+    price: i128,
+    timestamp: u64,
+) {
+    TicketListedEvent {
+        ticket_id,
+        seller,
+        price,
+        timestamp,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct TicketListingCancelledEvent {
+    pub ticket_id: u64,
+    pub seller: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_ticket_listing_cancelled_event(
+    env: &Env,
+    ticket_id: u64,
+    seller: Address,
+    timestamp: u64,
+) {
+    TicketListingCancelledEvent {
+        ticket_id,
+        seller,
+        timestamp,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct TicketListingSoldEvent {
+    pub ticket_id: u64,
+    pub seller: Address,
+    pub buyer: Address,
+    pub price: i128,
+    pub royalty: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_ticket_listing_sold_event(
+    env: &Env,
+    ticket_id: u64,
+    seller: Address,
+    buyer: Address,
+    price: i128,
+    royalty: i128,
+    timestamp: u64,
+) {
+    TicketListingSoldEvent {
+        ticket_id,
+        seller,
+        buyer,
+        price,
+        royalty,
+        timestamp,
+    }
+    .publish(env);
+}
+
+

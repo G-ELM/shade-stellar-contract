@@ -108,10 +108,10 @@ fn test_auto_withdrawal_triggered_on_payment() {
     let invoice_amount = 10_000i128;
     let invoice_id = shade_client.create_invoice(
         &merchant,
-        String::from_slice(&env, "Test Invoice"),
-        invoice_amount,
-        token.clone(),
-        None,
+        &String::from_slice(&env, "Test Invoice"),
+        &invoice_amount,
+        &token,
+        &None,
     );
 
     // Payer pays the invoice
@@ -148,10 +148,10 @@ fn test_auto_withdrawal_not_triggered_below_threshold() {
     let invoice_amount = 5_000i128;
     let invoice_id = shade_client.create_invoice(
         &merchant,
-        String::from_slice(&env, "Small Invoice"),
-        invoice_amount,
-        token.clone(),
-        None,
+        &String::from_slice(&env, "Small Invoice"),
+        &invoice_amount,
+        &token,
+        &None,
     );
 
     // Payer pays the invoice
@@ -183,10 +183,10 @@ fn test_auto_withdrawal_uses_merchant_address_as_default_recipient() {
     let invoice_amount = 10_000i128;
     let invoice_id = shade_client.create_invoice(
         &merchant,
-        String::from_slice(&env, "Test Invoice"),
-        invoice_amount,
-        token.clone(),
-        None,
+        &String::from_slice(&env, "Test Invoice"),
+        &invoice_amount,
+        &token,
+        &None,
     );
 
     // Payer pays the invoice

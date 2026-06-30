@@ -39,6 +39,10 @@ pub enum ContractError {
     InvalidDescription = 33,
     OracleNotConfigured = 34,
     OraclePriceUnavailable = 35,
+    EscrowNotExpired = 36,
+    EscrowAlreadyRefunded = 37,
+    TicketNotListed = 38,
+    TicketAlreadyListed = 39,
     TokenNotAcceptedByMerchant = 41,
     FeeUpdateTooEarly = 42,
     NoPendingFeeUpdate = 43,
@@ -53,6 +57,4 @@ pub enum ContractError {
     NotTicketOwner = 52,
     TicketEventMismatch = 53,
     InvalidResalePrice = 54,
-    EscrowNotExpired = 36,
-    EscrowAlreadyRefunded = 37,
 }
