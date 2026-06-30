@@ -47,6 +47,10 @@ pub enum DataKey {
     // --- Global token analytics ---
     TokenAnalytics(Address),
     TokenVolume(Address),
+    // --- Crowdfund Leaderboard ---
+    CampaignOwner(u64),
+    CampaignTopDonors(u64),
+    CampaignDonorAmount(u64, Address),
 }
 
 #[contracttype]
@@ -357,4 +361,11 @@ pub struct PaymentPayload {
     pub settlement_token: Address,
     pub route: PaymentRoute,
     pub max_slippage_bps: Option<u32>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DonorInfo {
+    pub donor: Address,
+    pub total_donated: i128,
 }

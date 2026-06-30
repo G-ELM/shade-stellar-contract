@@ -1,7 +1,7 @@
 use crate::types::{
     CrossChainBridgePayload, Event, Invoice, InvoiceFilter, Merchant, MerchantAnalytics,
     MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload, PendingFee, Role,
-    Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction
+    Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, DonorInfo
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
 
@@ -234,4 +234,21 @@ pub trait ShadeTrait {
 
     /// Get market share of a token as basis points (10000 = 100%)
     fn get_token_market_share(env: Env, token: Address) -> i128;
+
+    // ── Crowdfund Leaderboard ───────────────────────────────────────────────────
+
+    /// Initialize a campaign for leaderboard tracking
+    fn init_campaign(env: Env, merchant: Address, campaign_id: u64);
+
+    /// Track a donation and update the leaderboard
+    fn track_donation(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        donor: Address,
+        amount: i128,
+    );
+
+    /// Get the top donors for a campaign
+    fn get_top_donors(env: Env, campaign_id: u64) -> Vec<DonorInfo>;
 }

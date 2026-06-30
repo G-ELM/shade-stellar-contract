@@ -2,7 +2,7 @@ use crate::components::{
     access_control as access_control_component, admin as admin_component, core as core_component,
     invoice as invoice_component, merchant as merchant_component, pausable as pausable_component,
     subscription as subscription_component, upgrade as upgrade_component,
-    history as history_component,
+    history as history_component, leaderboard as leaderboard_component,
 };
 use crate::errors::ContractError;
 use crate::events;
@@ -10,7 +10,7 @@ use crate::interface::ShadeTrait;
 use crate::types::{
     ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice, InvoiceFilter, Merchant,
     MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload,
-    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction,
+    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, DonorInfo,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -571,5 +571,23 @@ impl ShadeTrait for Shade {
 
     fn get_token_market_share(env: Env, token: Address) -> i128 {
         admin_component::get_token_market_share(&env, &token)
+    }
+
+    fn init_campaign(env: Env, merchant: Address, campaign_id: u64) {
+        leaderboard_component::init_campaign(&env, merchant, campaign_id);
+    }
+
+    fn track_donation(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        donor: Address,
+        amount: i128,
+    ) {
+        leaderboard_component::track_donation(&env, merchant, campaign_id, donor, amount);
+    }
+
+    fn get_top_donors(env: Env, campaign_id: u64) -> Vec<DonorInfo> {
+        leaderboard_component::get_top_donors(&env, campaign_id)
     }
 }
