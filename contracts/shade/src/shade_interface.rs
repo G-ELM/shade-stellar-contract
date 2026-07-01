@@ -1,7 +1,8 @@
 use crate::types::{
-    BackerCampaign, BackerPerk, BackerRewardTier, CrossChainBridgePayload, Event, Invoice, InvoiceFilter, Merchant,
-    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, Nft, NftCollection, OracleConfig, PaymentPayload,
-    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction
+    Campaign, CampaignAffiliate, CampaignParticipant, CrossChainBridgePayload, Event, Invoice,
+    InvoiceFilter, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
+    OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
+    TokenAnalytics, Transaction,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
 
@@ -108,26 +109,9 @@ pub trait ShadeTrait {
         new_description: Option<String>,
     );
 
-    fn set_merchant_webhook(env: Env, merchant: Address, webhook: String);
-    fn get_merchant_webhook(env: Env, merchant_id: u64) -> String;
-
-    fn set_merchant_accepted_tokens(env: Env, merchant: Address, tokens: Vec<Address>);
-    fn get_merchant_accepted_tokens(env: Env, merchant: Address) -> Vec<Address>;
-    fn remove_merchant_accepted_token(env: Env, merchant: Address, token: Address);
-    fn is_token_accepted_for_merchant(env: Env, merchant: Address, token: Address) -> bool;
-
-    // ── Admin transfer (two-step handover) ───────────────────────────────────
-
-    /// Step 1: Current admin proposes a new admin address.
     fn propose_admin_transfer(env: Env, admin: Address, new_admin: Address);
-
-    /// Step 2: Proposed new admin accepts and takes ownership.
     fn accept_admin_transfer(env: Env, new_admin: Address);
 
-    // ── Subscription engine ───────────────────────────────────────────────────
-
-    /// Create a recurring billing plan.
-    /// Only `merchant` can call this (requires auth). Returns new plan ID.
     fn create_subscription_plan(
         env: Env,
         merchant: Address,
@@ -136,42 +120,21 @@ pub trait ShadeTrait {
         amount: i128,
         interval: u64,
     ) -> u64;
-
-    /// Fetch a plan by ID.
     fn get_subscription_plan(env: Env, plan_id: u64) -> SubscriptionPlan;
-
-    /// Subscribe a customer to a plan.
-    /// The customer must have already called `token.approve` to grant the Shade
-    /// contract sufficient allowance for recurring charges.
-    /// Returns the new subscription ID.
     fn subscribe(env: Env, customer: Address, plan_id: u64) -> u64;
-
-    /// Fetch a subscription by ID.
     fn get_subscription(env: Env, subscription_id: u64) -> Subscription;
-
-    /// Trigger a charge for a subscription.
-    /// Callable by anyone (merchant or automated bot).
-    /// Panics if the billing interval has not yet elapsed or subscription is not active.
     fn charge_subscription(env: Env, subscription_id: u64);
-
-    /// Cancel a subscription. Either the customer or the merchant may call this.
     fn cancel_subscription(env: Env, caller: Address, subscription_id: u64);
-
-    /// Deactivate a subscription plan so that no new customers can enroll.
-    /// Only the merchant who owns the plan may call this.
     fn deactivate_plan(env: Env, caller: Address, plan_id: u64);
-
-    /// Get all transactions executed by a specific customer address.
+    fn set_merchant_webhook(env: Env, merchant: Address, webhook: String);
+    fn get_merchant_webhook(env: Env, merchant_id: u64) -> String;
+    fn set_merchant_accepted_tokens(env: Env, merchant: Address, tokens: Vec<Address>);
+    fn get_merchant_accepted_tokens(env: Env, merchant: Address) -> Vec<Address>;
+    fn remove_merchant_accepted_token(env: Env, merchant: Address, token: Address);
+    fn is_token_accepted_for_merchant(env: Env, merchant: Address, token: Address) -> bool;
     fn get_user_transactions(env: Env, user: Address) -> Vec<Transaction>;
+    fn emit_bridge_placeholder(env: Env, caller: Address, payload: CrossChainBridgePayload);
 
-    // ── Cross-chain bridge placeholder ───────────────────────────────────────
-    fn emit_bridge_placeholder(
-        env: Env,
-        caller: Address,
-        payload: CrossChainBridgePayload,
-    );
-
-    // --- Event ticketing system ---
     #[allow(clippy::too_many_arguments)]
     fn create_event(
         env: Env,
@@ -205,10 +168,6 @@ pub trait ShadeTrait {
     fn get_ticket(env: Env, ticket_id: u64) -> Ticket;
     fn get_event_tickets(env: Env, event_id: u64) -> Vec<u64>;
     fn get_user_tickets(env: Env, user: Address) -> Vec<u64>;
-
-    /// Purchase multiple tickets in a single call.
-    /// Applies automatic group discount in Shade tokens:
-    /// 5–9 tickets → 5%, 10–19 → 10%, 20+ → 15%.
     fn purchase_tickets_bulk(
         env: Env,
         event_id: u64,
@@ -218,132 +177,54 @@ pub trait ShadeTrait {
         merchant_account: Address,
     );
 
-    // ── Token analytics ────────────────────────────────────────────────────────
-
-    /// Get comprehensive analytics for a specific token
     fn get_token_analytics(env: Env, token: Address) -> TokenAnalytics;
-
-    /// Get total volume for a specific token
     fn get_token_volume(env: Env, token: Address) -> i128;
-
-    /// Get token dominance metrics sorted by volume (descending)
     fn get_token_dominance_metrics(env: Env, tokens: Vec<Address>) -> Vec<(Address, i128)>;
-
-    /// Get top tokens by volume with limit
     fn get_top_tokens_by_volume(env: Env, limit: u32) -> Vec<(Address, i128)>;
-
-    /// Get market share of a token as basis points (10000 = 100%)
     fn get_token_market_share(env: Env, token: Address) -> i128;
 
-    // ── NFT minting & distribution ────────────────────────────────────────────
-
-    /// Create a new NFT collection for crowdfunding rewards. Only the merchant can call this.
-    fn create_nft_collection(
+    fn create_campaign(
         env: Env,
-        merchant: Address,
+        caller: Address,
         name: String,
-        base_uri: String,
-        max_supply: u64,
-        royalty_bps: u32,
+        charity: bool,
+        fee_waiver_bps: u32,
+        discount_bps: u32,
+        stake_required: i128,
     ) -> u64;
-
-    /// Mint a single NFT from a collection to a recipient (backer reward).
-    fn mint_nft(
+    fn configure_campaign_fee_policy(
         env: Env,
-        merchant: Address,
-        collection_id: u64,
-        recipient: Address,
-        token_uri: String,
-    ) -> u64;
-
-    /// Mint NFTs to multiple backers in one call.
-    fn batch_mint_nfts(
-        env: Env,
-        merchant: Address,
-        collection_id: u64,
-        recipients: Vec<Address>,
-        token_uris: Vec<String>,
-    ) -> Vec<u64>;
-
-    /// Transfer an NFT from one address to another.
-    fn transfer_nft(env: Env, from: Address, to: Address, nft_id: u64);
-
-    /// Burn (permanently destroy) an NFT. Only the owner can do this.
-    fn burn_nft(env: Env, owner: Address, nft_id: u64);
-
-    /// Claim a reward NFT assigned to the caller.
-    fn claim_nft_reward(env: Env, claimer: Address, nft_id: u64);
-
-    /// Deactivate a collection so no further minting is possible.
-    fn deactivate_nft_collection(env: Env, merchant: Address, collection_id: u64);
-
-    /// Fetch a collection by ID.
-    fn get_nft_collection(env: Env, collection_id: u64) -> NftCollection;
-
-    /// Fetch a single NFT by its global token ID.
-    fn get_nft(env: Env, nft_id: u64) -> Nft;
-
-    /// List all token IDs belonging to a collection.
-    fn get_collection_nfts(env: Env, collection_id: u64) -> Vec<u64>;
-
-    /// List all NFT IDs owned by a user.
-    fn get_user_nfts(env: Env, user: Address) -> Vec<u64>;
-}
-    // ── Backer rewards (crowdfunding tiers & perks) ───────────────────────────
-
-    /// Create a crowdfunding campaign for tiered backer rewards.
-    fn create_backer_campaign(
-        env: Env,
-        merchant: Address,
-        name: String,
-        token: Address,
-        deadline: u64,
-    ) -> u64;
-
-    fn get_backer_campaign(env: Env, campaign_id: u64) -> BackerCampaign;
-
-    /// Define reward tiers with perks. Tiers must have ascending `min_pledge`.
-    fn set_backer_reward_tiers(
-        env: Env,
-        merchant: Address,
+        caller: Address,
         campaign_id: u64,
-        tiers: Vec<BackerRewardTier>,
+        fee_waiver_bps: u32,
+        discount_bps: u32,
     );
-
-    fn get_backer_reward_tiers(env: Env, campaign_id: u64) -> Vec<BackerRewardTier>;
-
-    /// Record a backer pledge to a campaign.
-    fn pledge_to_campaign(env: Env, backer: Address, campaign_id: u64, amount: i128);
-
-    fn get_backer_pledge(env: Env, campaign_id: u64, backer: Address) -> i128;
-
-    /// Select a reward tier. Backer's total pledge must meet the tier minimum.
-    fn select_backer_reward_tier(
+    fn calculate_campaign_discounted_amount(env: Env, campaign_id: u64, amount: i128) -> i128;
+    fn record_campaign_contribution(env: Env, caller: Address, campaign_id: u64, amount: i128);
+    fn stake_campaign(env: Env, caller: Address, campaign_id: u64, amount: i128);
+    fn slash_campaign_stake(
         env: Env,
-        backer: Address,
+        caller: Address,
         campaign_id: u64,
-        tier_index: u32,
+        participant: Address,
+        amount: i128,
     );
-
-    fn get_backer_selected_tier(env: Env, campaign_id: u64, backer: Address) -> Option<u32>;
-
-    /// Mark a backer's reward as fulfilled. Merchant-only.
-    fn fulfill_backer_reward(
+    fn register_affiliate(
         env: Env,
-        merchant: Address,
+        caller: Address,
         campaign_id: u64,
-        backer: Address,
+        affiliate: Address,
+        commission_bps: u32,
     );
-
-    fn is_backer_reward_fulfilled(env: Env, campaign_id: u64, backer: Address) -> bool;
-
-    /// Claim a perk from the backer's selected tier after fulfillment.
-    fn claim_backer_perk(env: Env, backer: Address, campaign_id: u64, perk_index: u32);
-
-    fn is_backer_perk_claimed(
+    fn pay_affiliate_commission(
         env: Env,
+        caller: Address,
         campaign_id: u64,
-        backer: Address,
-        perk_index: u32,
-    ) -> bool;
+        affiliate: Address,
+        amount: i128,
+    );
+    fn get_campaign(env: Env, campaign_id: u64) -> Campaign;
+    fn get_campaign_participant(env: Env, campaign_id: u64, participant: Address) -> CampaignParticipant;
+    fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate;
+    fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)>;
 }
