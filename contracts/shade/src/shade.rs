@@ -1,4 +1,5 @@
-use crate::components::{
+﻿use crate::components::{
+    nft as nft_component,
     access_control as access_control_component, admin as admin_component, core as core_component,
     invoice as invoice_component, merchant as merchant_component, pausable as pausable_component,
     subscription as subscription_component, upgrade as upgrade_component,
@@ -6,11 +7,12 @@ use crate::components::{
 };
 use crate::errors::ContractError;
 use crate::events;
-use crate::interface::ShadeTrait;
+use crate::shade_interface::ShadeTrait;
 use crate::types::{
-    ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice, InvoiceFilter, Merchant,
-    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload,
-    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, TicketListing,
+    BackerCampaign, BackerRewardTier, ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice,
+    InvoiceFilter, Merchant, Nft, NftCollection, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
+    OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
+    TokenAnalytics, Transaction,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -573,49 +575,165 @@ impl ShadeTrait for Shade {
         admin_component::get_token_market_share(&env, &token)
     }
 
-    // --- Auto withdrawal ---
-    fn set_auto_withdrawal_threshold(env: Env, merchant_address: Address, token: Address, threshold: i128) {
+    // ── NFT minting & distribution ────────────────────────────────────────────
+
+    fn create_nft_collection(
+        env: Env,
+        merchant: Address,
+        name: String,
+        base_uri: String,
+        max_supply: u64,
+        royalty_bps: u32,
+    ) -> u64 {
         pausable_component::assert_not_paused(&env);
-        crate::components::auto_withdrawal::set_auto_withdrawal_threshold(&env, &merchant_address, &token, threshold);
+        nft_component::create_nft_collection(&env, &merchant, &name, &base_uri, max_supply, royalty_bps)
     }
 
-    fn get_auto_withdrawal_threshold(env: Env, merchant_id: u64, token: Address) -> Option<i128> {
-        crate::components::auto_withdrawal::get_auto_withdrawal_threshold(&env, merchant_id, &token)
-    }
-
-    fn set_auto_withdrawal_recipient(env: Env, merchant_address: Address, recipient: Address) {
+    fn mint_nft(
+        env: Env,
+        merchant: Address,
+        collection_id: u64,
+        recipient: Address,
+        token_uri: String,
+    ) -> u64 {
         pausable_component::assert_not_paused(&env);
-        crate::components::auto_withdrawal::set_auto_withdrawal_recipient(&env, &merchant_address, &recipient);
+        nft_component::mint_nft(&env, &merchant, collection_id, &recipient, &token_uri)
     }
 
-    fn get_auto_withdrawal_recipient(env: Env, merchant_id: u64) -> Option<Address> {
-        crate::components::auto_withdrawal::get_auto_withdrawal_recipient(&env, merchant_id)
-    }
-
-    // --- Escrow ---
-    fn claim_refund(env: Env, buyer: Address, invoice_id: u64) {
+    fn batch_mint_nfts(
+        env: Env,
+        merchant: Address,
+        collection_id: u64,
+        recipients: Vec<Address>,
+        token_uris: Vec<String>,
+    ) -> Vec<u64> {
         pausable_component::assert_not_paused(&env);
-        invoice_component::claim_refund(&env, &buyer, invoice_id);
+        nft_component::batch_mint_nfts(&env, &merchant, collection_id, &recipients, &token_uris)
     }
 
-    // --- Ticket Secondary Market ---
-    fn list_ticket(env: Env, seller: Address, ticket_id: u64, price: i128) {
+    fn transfer_nft(env: Env, from: Address, to: Address, nft_id: u64) {
         pausable_component::assert_not_paused(&env);
-        crate::components::event::list_ticket(&env, &seller, ticket_id, price);
+        nft_component::transfer_nft(&env, &from, &to, nft_id)
     }
 
-    fn cancel_ticket_listing(env: Env, seller: Address, ticket_id: u64) {
+    fn burn_nft(env: Env, owner: Address, nft_id: u64) {
         pausable_component::assert_not_paused(&env);
-        crate::components::event::cancel_ticket_listing(&env, &seller, ticket_id);
+        nft_component::burn_nft(&env, &owner, nft_id)
     }
 
-    fn buy_ticket_from_listing(env: Env, buyer: Address, ticket_id: u64) {
+    fn claim_nft_reward(env: Env, claimer: Address, nft_id: u64) {
         pausable_component::assert_not_paused(&env);
-        crate::components::event::buy_ticket_from_listing(&env, &buyer, ticket_id);
+        nft_component::claim_nft_reward(&env, &claimer, nft_id)
     }
 
-    fn get_ticket_listing(env: Env, ticket_id: u64) -> TicketListing {
-        crate::components::event::get_ticket_listing(&env, ticket_id)
+    fn deactivate_nft_collection(env: Env, merchant: Address, collection_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        nft_component::deactivate_nft_collection(&env, &merchant, collection_id)
+    }
+
+    fn get_nft_collection(env: Env, collection_id: u64) -> NftCollection {
+        nft_component::get_nft_collection(&env, collection_id)
+    }
+
+    fn get_nft(env: Env, nft_id: u64) -> Nft {
+        nft_component::get_nft(&env, nft_id)
+    }
+
+    fn get_collection_nfts(env: Env, collection_id: u64) -> Vec<u64> {
+        nft_component::get_collection_nfts(&env, collection_id)
+    }
+
+    fn get_user_nfts(env: Env, user: Address) -> Vec<u64> {
+        nft_component::get_user_nfts(&env, &user)
+    }
+    fn create_backer_campaign(
+        env: Env,
+        merchant: Address,
+        name: String,
+        token: Address,
+        deadline: u64,
+    ) -> u64 {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::create_backer_campaign(
+            &env, merchant, name, token, deadline,
+        )
+    }
+
+    fn get_backer_campaign(env: Env, campaign_id: u64) -> BackerCampaign {
+        crate::components::backer_rewards::get_backer_campaign(&env, campaign_id)
+    }
+
+    fn set_backer_reward_tiers(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        tiers: Vec<BackerRewardTier>,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::set_backer_reward_tiers(
+            &env, merchant, campaign_id, tiers,
+        );
+    }
+
+    fn get_backer_reward_tiers(env: Env, campaign_id: u64) -> Vec<BackerRewardTier> {
+        crate::components::backer_rewards::get_backer_reward_tiers(&env, campaign_id)
+    }
+
+    fn pledge_to_campaign(env: Env, backer: Address, campaign_id: u64, amount: i128) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::pledge_to_campaign(&env, backer, campaign_id, amount);
+    }
+
+    fn get_backer_pledge(env: Env, campaign_id: u64, backer: Address) -> i128 {
+        crate::components::backer_rewards::get_backer_pledge(&env, campaign_id, backer)
+    }
+
+    fn select_backer_reward_tier(
+        env: Env,
+        backer: Address,
+        campaign_id: u64,
+        tier_index: u32,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::select_backer_reward_tier(
+            &env, backer, campaign_id, tier_index,
+        );
+    }
+
+    fn get_backer_selected_tier(env: Env, campaign_id: u64, backer: Address) -> Option<u32> {
+        crate::components::backer_rewards::get_backer_selected_tier(&env, campaign_id, backer)
+    }
+
+    fn fulfill_backer_reward(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        backer: Address,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::fulfill_backer_reward(
+            &env, merchant, campaign_id, backer,
+        );
+    }
+
+    fn is_backer_reward_fulfilled(env: Env, campaign_id: u64, backer: Address) -> bool {
+        crate::components::backer_rewards::is_backer_reward_fulfilled(&env, campaign_id, backer)
+    }
+
+    fn claim_backer_perk(env: Env, backer: Address, campaign_id: u64, perk_index: u32) {
+        pausable_component::assert_not_paused(&env);
+        crate::components::backer_rewards::claim_backer_perk(&env, backer, campaign_id, perk_index);
+    }
+
+    fn is_backer_perk_claimed(
+        env: Env,
+        campaign_id: u64,
+        backer: Address,
+        perk_index: u32,
+    ) -> bool {
+        crate::components::backer_rewards::is_backer_perk_claimed(
+            &env, campaign_id, backer, perk_index,
+        )
     }
 }
 
