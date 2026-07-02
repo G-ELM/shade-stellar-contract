@@ -14,12 +14,14 @@ use soroban_sdk::{
 
 #[allow(dead_code)]
 #[contractclient(name = "InvoicePaymentClient")]
+#[allow(dead_code)]
 trait InvoicePayment {
     fn pay_invoice(env: Env, payer: Address, invoice_id: u64);
 }
 
 #[allow(dead_code)]
 #[contractclient(name = "MerchantAccountRefundClient")]
+#[allow(dead_code)]
 trait MerchantAccountRefund {
     fn refund(env: Env, token: Address, amount: i128, to: Address);
 }
