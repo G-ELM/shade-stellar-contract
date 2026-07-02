@@ -924,15 +924,6 @@ pub fn claim_refund(env: &Env, buyer: &Address, invoice_id: u64) {
     env.storage()
         .persistent()
         .set(&DataKey::Invoice(invoice_id), &invoice);
-
-    events::publish_escrow_expired_refund_event(
-        env,
-        invoice_id,
-        buyer.clone(),
-        amount_to_refund,
-        invoice.token.clone(),
-        env.ledger().timestamp(),
-    );
 }
 
 fn merchant_id_to_address(env: &Env, merchant_id: u64) -> Address {

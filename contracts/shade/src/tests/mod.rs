@@ -49,6 +49,8 @@ pub mod test_transaction_history;
 pub mod test_upgrade;
 pub mod test_fiat_pricing;
 pub mod test_event_tickets;
+pub mod test_feature_211;
+// pub mod test_analytics_aggregation; // TODO: broken – uses `vec!`/`format!` in no_std, wrong args
 pub mod test_analytics_aggregation;
 pub mod test_campaigns;
 pub mod test_feature_231;
