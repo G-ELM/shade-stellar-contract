@@ -1322,3 +1322,4 @@ impl ShadeTrait for Shade {
         leaderboard_component::get_top_donors(&env, campaign_id)
     }
 }
+

@@ -1,6 +1,9 @@
 #![cfg(test)]
 extern crate std;
 
+extern crate std;
+use std::{vec, format};
+
 use crate::shade::{Shade, ShadeClient};
 use crate::types::{MerchantAnalytics, MerchantAnalyticsSummary, TokenAnalytics};
 use account::account::{MerchantAccount, MerchantAccountClient};

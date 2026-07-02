@@ -616,3 +616,4 @@ pub trait ShadeTrait {
     /// Get all cross-chain pledges
     fn get_all_cross_chain_pledges(env: Env) -> Vec<CrossChainPledge>;
 }
+

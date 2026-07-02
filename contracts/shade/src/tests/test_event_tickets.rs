@@ -205,6 +205,7 @@ fn purchase_ticket_transfers_funds_and_mints() {
     let event = f.client.get_event(&event_id);
     assert_eq!(event.sold, 1);
 
+
     // Funds moved off the buyer.
     let token_client = TokenClient::new(&f.env, &f.token);
     assert_eq!(token_client.balance(&buyer), TOKEN_INITIAL_BALANCE - price);

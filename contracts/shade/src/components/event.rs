@@ -513,3 +513,138 @@ fn resolve_current_ticket_price(env: &Env, event: &Event) -> i128 {
 
     base
 }
+
+pub fn list_ticket(env: &Env, seller: &Address, ticket_id: u64, price: i128) {
+    seller.require_auth();
+
+    if price <= 0 {
+        panic_with_error!(env, ContractError::InvalidResalePrice);
+    }
+
+    let ticket = get_ticket(env, ticket_id);
+
+    if ticket.owner != *seller {
+        panic_with_error!(env, ContractError::NotTicketOwner);
+    }
+
+    let event = get_event(env, &ticket.event_id);
+
+    if event.cancelled {
+        panic_with_error!(env, ContractError::InvalidInvoiceStatus);
+    }
+
+    if env.storage().persistent().has(&DataKey::TicketListing(ticket_id)) {
+        panic_with_error!(env, ContractError::TicketAlreadyListed);
+    }
+
+    let listing = TicketListing {
+        ticket_id,
+        seller: seller.clone(),
+        price,
+    };
+
+    env.storage()
+        .persistent()
+        .set(&DataKey::TicketListing(ticket_id), &listing);
+
+    events::publish_ticket_listed_event(env, ticket_id, seller.clone(), price, env.ledger().timestamp());
+}
+
+pub fn cancel_ticket_listing(env: &Env, seller: &Address, ticket_id: u64) {
+    seller.require_auth();
+
+    let listing: TicketListing = env
+        .storage()
+        .persistent()
+        .get(&DataKey::TicketListing(ticket_id))
+        .unwrap_or_else(|| panic_with_error!(env, ContractError::TicketNotListed));
+
+    if listing.seller != *seller {
+        panic_with_error!(env, ContractError::NotAuthorized);
+    }
+
+    env.storage()
+        .persistent()
+        .remove(&DataKey::TicketListing(ticket_id));
+
+    events::publish_ticket_listing_cancelled_event(env, ticket_id, seller.clone(), env.ledger().timestamp());
+}
+
+pub fn buy_ticket_from_listing(env: &Env, buyer: &Address, ticket_id: u64) {
+    buyer.require_auth();
+
+    let listing: TicketListing = env
+        .storage()
+        .persistent()
+        .get(&DataKey::TicketListing(ticket_id))
+        .unwrap_or_else(|| panic_with_error!(env, ContractError::TicketNotListed));
+
+    if listing.seller == *buyer {
+        panic_with_error!(env, ContractError::NotAuthorized);
+    }
+
+    let mut ticket = get_ticket(env, ticket_id);
+
+    if ticket.owner != listing.seller {
+        panic_with_error!(env, ContractError::NotTicketOwner);
+    }
+
+    let event = get_event(env, &ticket.event_id);
+
+    if event.cancelled {
+        panic_with_error!(env, ContractError::InvalidInvoiceStatus);
+    }
+
+    if !admin::is_accepted_token(env, &event.token) {
+        panic_with_error!(env, ContractError::TokenNotAccepted);
+    }
+
+    let resale_price = listing.price;
+    let royalty = bps_of(resale_price, event.royalty_bps)
+        .unwrap_or_else(|| panic_with_error!(env, ContractError::InvalidAmount));
+    if royalty < 0 || royalty > resale_price {
+        panic_with_error!(env, ContractError::InvalidAmount);
+    }
+    let seller_proceeds = resale_price - royalty;
+
+    let merchant_account = merchant::get_merchant_account(env, event.merchant_id);
+    let token_client = token::TokenClient::new(env, &event.token);
+
+    if seller_proceeds > 0 {
+        token_client.transfer(buyer, &listing.seller, &seller_proceeds);
+    }
+    if royalty > 0 {
+        token_client.transfer(buyer, &merchant_account, &royalty);
+    }
+
+    let prev_owner = ticket.owner.clone();
+    ticket.owner = buyer.clone();
+    env.storage()
+        .persistent()
+        .set(&DataKey::Ticket(ticket_id), &ticket);
+
+    remove_user_ticket(env, &prev_owner, ticket_id);
+    add_user_ticket(env, buyer, ticket_id);
+
+    env.storage()
+        .persistent()
+        .remove(&DataKey::TicketListing(ticket_id));
+
+    events::publish_ticket_listing_sold_event(
+        env,
+        ticket_id,
+        listing.seller.clone(),
+        buyer.clone(),
+        resale_price,
+        royalty,
+        env.ledger().timestamp(),
+    );
+}
+
+pub fn get_ticket_listing(env: &Env, ticket_id: u64) -> TicketListing {
+    env.storage()
+        .persistent()
+        .get(&DataKey::TicketListing(ticket_id))
+        .unwrap_or_else(|| panic_with_error!(env, ContractError::TicketNotListed))
+}
+

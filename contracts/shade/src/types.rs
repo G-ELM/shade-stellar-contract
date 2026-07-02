@@ -126,6 +126,7 @@ pub enum DataKey {
     BackerTierBackerCount(u64, u32),
 }
 
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractInfo {

@@ -783,6 +783,7 @@ pub fn pay_invoice_partial(env: &Env, payer: &Address, invoice_id: u64, amount: 
     fee_amount
 }
 
+
 pub fn void_invoice(env: &Env, merchant_address: &Address, invoice_id: u64) {
     merchant_address.require_auth();
 
