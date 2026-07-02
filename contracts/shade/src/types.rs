@@ -49,6 +49,10 @@ pub enum DataKey {
     // --- Global token analytics ---
     TokenAnalytics(Address),
     TokenVolume(Address),
+    // --- Crowdfund Leaderboard ---
+    CampaignOwner(u64),
+    CampaignTopDonors(u64),
+    CampaignDonorAmount(u64, Address),
     // --- Campaign categories & tagging system (#352) ---
     /// A predefined campaign category created by the admin.
     CampaignCategory(u64),

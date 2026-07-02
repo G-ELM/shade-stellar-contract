@@ -24,4 +24,5 @@ pub mod upgrade;
 pub mod escrow;
 pub mod backer_rewards;
 pub mod event;
+pub mod leaderboard;
 pub mod cross_chain_pledge;

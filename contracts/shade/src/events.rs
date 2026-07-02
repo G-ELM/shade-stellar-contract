@@ -1458,6 +1458,33 @@ pub fn publish_ticket_resold_event(
     .publish(env);
 }
 
+// ── Leaderboard Events ────────────────────────────────────────────────────────
+
+#[contractevent]
+pub struct LeaderboardUpdatedEvent {
+    pub campaign_id: u64,
+    pub donor: Address,
+    pub amount: i128,
+    pub new_total: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_leaderboard_updated_event(
+    env: &Env,
+    campaign_id: u64,
+    donor: Address,
+    amount: i128,
+    new_total: i128,
+    timestamp: u64,
+) {
+    LeaderboardUpdatedEvent {
+        campaign_id,
+        donor,
+        amount,
+        new_total,
+    }
+}
+
 // ── Campaign categories & tagging (#352) ──────────────────────────────────────
 
 #[contractevent]

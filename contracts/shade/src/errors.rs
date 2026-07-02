@@ -48,6 +48,7 @@ pub enum ContractError {
     TicketNotFound = 51,
     NotTicketOwner = 52,
     InvalidResalePrice = 54,
+    CampaignNotFound = 55,
     // ── Campaign categories & tagging (#352) ──────────────────────────────
     /// Referenced campaign category does not exist.
     CampaignCategoryNotFound = 55,

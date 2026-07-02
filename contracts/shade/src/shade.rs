@@ -1303,4 +1303,22 @@ impl ShadeTrait for Shade {
     fn get_campaigns(env: Env, filter: CampaignFilter) -> Vec<Campaign> {
         campaigns_component::get_campaigns(&env, filter)
     }
+
+    fn init_campaign(env: Env, merchant: Address, campaign_id: u64) {
+        leaderboard_component::init_campaign(&env, merchant, campaign_id);
+    }
+
+    fn track_donation(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        donor: Address,
+        amount: i128,
+    ) {
+        leaderboard_component::track_donation(&env, merchant, campaign_id, donor, amount);
+    }
+
+    fn get_top_donors(env: Env, campaign_id: u64) -> Vec<DonorInfo> {
+        leaderboard_component::get_top_donors(&env, campaign_id)
+    }
 }
