@@ -104,6 +104,9 @@ pub fn execute_secondary_sale(
     if config.royalty_bps > MAX_BPS {
         panic_with_error!(env, ContractError::InvalidRoyaltyBps);
     }
+    if config.merchant_id != campaign.merchant_id || config.token != *token {
+        panic_with_error!(env, ContractError::NotAuthorized);
+    }
 
     let royalty_amount = bps_of(gross_amount, config.royalty_bps)
         .unwrap_or_else(|| panic_with_error!(env, ContractError::InvalidAmount));
