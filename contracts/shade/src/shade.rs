@@ -1,4 +1,5 @@
 ﻿use crate::components::{
+    campaign_royalties as campaign_royalties_component,
     nft as nft_component,
     access_control as access_control_component, admin as admin_component, core as core_component,
     invoice as invoice_component, merchant as merchant_component,
@@ -27,7 +28,7 @@ use crate::types::{
     OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
     TokenAnalytics, Transaction,
 };
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, Option, String, Vec};
 
 #[contract]
 pub struct Shade;
@@ -1320,6 +1321,76 @@ impl ShadeTrait for Shade {
 
     fn get_top_donors(env: Env, campaign_id: u64) -> Vec<DonorInfo> {
         leaderboard_component::get_top_donors(&env, campaign_id)
+    }
+
+    fn set_campaign_royalty(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        royalty_bps: u32,
+        recipient: Option<Address>,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        campaign_royalties_component::set_campaign_royalty(
+            &env,
+            &merchant,
+            campaign_id,
+            royalty_bps,
+            recipient,
+        );
+    }
+
+    fn get_campaign_royalty_config(
+        env: Env,
+        campaign_id: u64,
+    ) -> Option<crate::types::CampaignRoyaltyConfig> {
+        campaign_royalties_component::get_campaign_royalty_config(&env, campaign_id)
+    }
+
+    fn execute_campaign_secondary_sale(
+        env: Env,
+        seller: Address,
+        buyer: Address,
+        campaign_id: u64,
+        token: Address,
+        gross_amount: i128,
+    ) -> u64 {
+        pausable_component::assert_not_paused(&env);
+        campaign_royalties_component::execute_secondary_sale(
+            &env,
+            &seller,
+            &buyer,
+            campaign_id,
+            &token,
+            gross_amount,
+        )
+    }
+
+    fn get_campaign_secondary_sale(
+        env: Env,
+        sale_id: u64,
+    ) -> crate::types::CampaignSecondarySale {
+        campaign_royalties_component::get_campaign_secondary_sale(&env, sale_id)
+    }
+
+    fn get_campaign_sale_count(env: Env) -> u64 {
+        campaign_royalties_component::get_campaign_secondary_sale_count(&env)
+    }
+
+    fn get_campaign_royalty_earnings(env: Env, campaign_id: u64) -> i128 {
+        campaign_royalties_component::get_campaign_royalty_earnings(&env, campaign_id)
+    }
+
+    fn get_campaign_token_royalties(
+        env: Env,
+        campaign_id: u64,
+        token: Address,
+    ) -> i128 {
+        campaign_royalties_component::get_campaign_royalty_earnings_for_token(
+            &env,
+            campaign_id,
+            &token,
+        )
     }
 }
 

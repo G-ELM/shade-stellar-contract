@@ -78,6 +78,16 @@ pub enum DataKey {
     MerchantCampaigns(u64),
     /// Reverse index: campaign_id -> ordered list of attached tag IDs.
     CampaignTagList(u64),
+    /// Per-campaign secondary-sale royalty configuration.
+    CampaignRoyaltyConfig(u64),
+    /// Sequential secondary-sale ledger entry.
+    CampaignSecondarySale(u64),
+    /// Total number of campaign secondary sales ever recorded.
+    CampaignSecondarySaleCount,
+    /// Cumulative royalties earned by a campaign across all tokens.
+    CampaignRoyaltyEarnings(u64),
+    /// Cumulative royalties earned by a campaign for a specific token.
+    CampaignRoyaltyEarningsByToken(u64, Address),
     // --- Cross-chain pledge system ---
     CrossChainPledge(u64),
     CrossChainPledgeCount,
@@ -590,6 +600,34 @@ pub struct CampaignTag {
     pub timestamp: u64,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CampaignRoyaltyConfig {
+    pub campaign_id: u64,
+    pub merchant_id: u64,
+    pub recipient: Address,
+    pub token: Address,
+    pub royalty_bps: u32,
+    pub updated_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CampaignSecondarySale {
+    pub sale_id: u64,
+    pub campaign_id: u64,
+    pub merchant_id: u64,
+    pub seller: Address,
+    pub buyer: Address,
+    pub token: Address,
+    pub gross_amount: i128,
+    pub royalty_amount: i128,
+    pub seller_amount: i128,
+    pub royalty_bps: u32,
+    pub royalty_recipient: Address,
+    pub timestamp: u64,
+}
+
 // ── Multi-sig massive withdrawal ──────────────────────────────────────────────
 
 /// Current lifecycle state of a withdrawal proposal.
@@ -727,6 +765,8 @@ pub struct InvoicePage {
 pub struct MerchantPage {
     pub items: soroban_sdk::Vec<Merchant>,
     pub page_info: PageInfo,
+}
+
 // --- Campaign fundraising engine ---
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
