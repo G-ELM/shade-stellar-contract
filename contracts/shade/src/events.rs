@@ -1886,3 +1886,86 @@ pub fn publish_escrow_expired_refund_event(
     }
     .publish(env);
 }
+
+#[contractevent]
+pub struct CampaignRoyaltyConfiguredEvent {
+    pub campaign_id: u64,
+    pub merchant_id: u64,
+    pub merchant: Address,
+    pub recipient: Address,
+    pub token: Address,
+    pub royalty_bps: u32,
+    pub timestamp: u64,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn publish_campaign_royalty_configured_event(
+    env: &Env,
+    campaign_id: u64,
+    merchant_id: u64,
+    merchant: Address,
+    recipient: Address,
+    token: Address,
+    royalty_bps: u32,
+    timestamp: u64,
+) {
+    CampaignRoyaltyConfiguredEvent {
+        campaign_id,
+        merchant_id,
+        merchant,
+        recipient,
+        token,
+        royalty_bps,
+        timestamp,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+pub struct CampaignSecondarySaleEvent {
+    pub sale_id: u64,
+    pub campaign_id: u64,
+    pub merchant_id: u64,
+    pub seller: Address,
+    pub buyer: Address,
+    pub token: Address,
+    pub gross_amount: i128,
+    pub royalty_amount: i128,
+    pub seller_amount: i128,
+    pub royalty_bps: u32,
+    pub royalty_recipient: Address,
+    pub timestamp: u64,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn publish_campaign_secondary_sale_event(
+    env: &Env,
+    sale_id: u64,
+    campaign_id: u64,
+    merchant_id: u64,
+    seller: Address,
+    buyer: Address,
+    token: Address,
+    gross_amount: i128,
+    royalty_amount: i128,
+    seller_amount: i128,
+    royalty_bps: u32,
+    royalty_recipient: Address,
+    timestamp: u64,
+) {
+    CampaignSecondarySaleEvent {
+        sale_id,
+        campaign_id,
+        merchant_id,
+        seller,
+        buyer,
+        token,
+        gross_amount,
+        royalty_amount,
+        seller_amount,
+        royalty_bps,
+        royalty_recipient,
+        timestamp,
+    }
+    .publish(env);
+}
