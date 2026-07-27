@@ -248,9 +248,9 @@ pub trait ShadeTrait {
         gross_amount: i128,
     ) -> u64;
     fn get_campaign_secondary_sale(env: Env, sale_id: u64) -> CampaignSecondarySale;
-    fn get_campaign_secondary_sale_count(env: Env) -> u64;
+    fn get_campaign_sale_count(env: Env) -> u64;
     fn get_campaign_royalty_earnings(env: Env, campaign_id: u64) -> i128;
-    fn get_campaign_royalty_earnings_for_token(
+    fn get_campaign_token_royalties(
         env: Env,
         campaign_id: u64,
         token: Address,

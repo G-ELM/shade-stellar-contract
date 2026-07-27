@@ -765,6 +765,8 @@ pub struct InvoicePage {
 pub struct MerchantPage {
     pub items: soroban_sdk::Vec<Merchant>,
     pub page_info: PageInfo,
+}
+
 // --- Campaign fundraising engine ---
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

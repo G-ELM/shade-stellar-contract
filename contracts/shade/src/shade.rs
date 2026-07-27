@@ -1373,7 +1373,7 @@ impl ShadeTrait for Shade {
         campaign_royalties_component::get_campaign_secondary_sale(&env, sale_id)
     }
 
-    fn get_campaign_secondary_sale_count(env: Env) -> u64 {
+    fn get_campaign_sale_count(env: Env) -> u64 {
         campaign_royalties_component::get_campaign_secondary_sale_count(&env)
     }
 
@@ -1381,7 +1381,7 @@ impl ShadeTrait for Shade {
         campaign_royalties_component::get_campaign_royalty_earnings(&env, campaign_id)
     }
 
-    fn get_campaign_royalty_earnings_for_token(
+    fn get_campaign_token_royalties(
         env: Env,
         campaign_id: u64,
         token: Address,

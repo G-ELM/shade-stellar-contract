@@ -1677,6 +1677,10 @@ pub fn publish_campaign_updated_event(
         title,
         description,
         timestamp,
+    }
+    .publish(env);
+}
+
 /// Emitted each time a registered signer approves a proposal.
 #[contractevent]
 pub struct WithdrawalApprovedEvent {
@@ -1703,6 +1707,11 @@ pub fn publish_withdrawal_approved_event(
         signer,
         approvals_so_far,
         quorum_required,
+        timestamp,
+    }
+    .publish(env);
+}
+
 #[contractevent]
 pub struct AutoWithdrawalTriggeredEvent {
     pub merchant_id: u64,
@@ -1770,6 +1779,10 @@ pub fn publish_campaign_tag_added_event(
         campaign_id,
         merchant,
         tag_id,
+        timestamp,
+    }
+    .publish(env);
+}
 // ── Escrow expired-refund event ────────────────────────────────────────────────
 
 /// Emitted when a subscription plan query is executed.
@@ -1843,6 +1856,11 @@ pub fn publish_campaign_contribution_event(
         amount,
         raised_amount,
         goal_amount,
+        timestamp,
+    }
+    .publish(env);
+}
+
 /// Emitted when an event (ticketing) query is executed.
 #[contractevent]
 pub struct EventSearchExecutedEvent {
@@ -1860,6 +1878,11 @@ pub fn publish_event_search_executed_event(
     EventSearchExecutedEvent {
         caller,
         result_count,
+        timestamp,
+    }
+    .publish(env);
+}
+
 #[contractevent]
 pub struct EscrowExpiredRefundEvent {
     pub invoice_id: u64,
