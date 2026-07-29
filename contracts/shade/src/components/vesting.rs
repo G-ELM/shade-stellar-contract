@@ -1,20 +1,20 @@
-use crate::components::admin;
+use crate::components::core;
 use crate::errors::ContractError;
 use crate::events;
-use crate::types::{CrowdfundVestingConfig, DataKey, VestingSchedule, VestingTimeline};
+use crate::types::{CampaignKey, CrowdfundVestingConfig, VestingSchedule, VestingTimeline};
 use soroban_sdk::{panic_with_error, Address, Env, String};
 
 fn get_vesting_timeline_count(env: &Env) -> u64 {
     env.storage()
         .persistent()
-        .get(&DataKey::VestingTimelineCount)
+        .get(&CampaignKey::VestingTimelineCount)
         .unwrap_or(0)
 }
 
 fn set_vesting_timeline_count(env: &Env, count: u64) {
     env.storage()
         .persistent()
-        .set(&DataKey::VestingTimelineCount, &count);
+        .set(&CampaignKey::VestingTimelineCount, &count);
 }
 
 pub fn create_vesting_timeline(
@@ -26,7 +26,7 @@ pub fn create_vesting_timeline(
     unlock_percentage: i128,
 ) -> u64 {
     admin.require_auth();
-    let contract_admin = admin::get_admin(env);
+    let contract_admin = core::get_admin(env);
     if admin != contract_admin {
         panic_with_error!(env, ContractError::NotAuthorized);
     }
@@ -54,7 +54,7 @@ pub fn create_vesting_timeline(
 
     env.storage()
         .persistent()
-        .set(&DataKey::VestingTimeline(timeline_id), &timeline);
+        .set(&CampaignKey::VestingTimeline(timeline_id), &timeline);
 
     events::publish_vesting_timeline_created_event(
         env,
@@ -72,7 +72,7 @@ pub fn create_vesting_timeline(
 pub fn get_vesting_timeline(env: &Env, timeline_id: u64) -> VestingTimeline {
     env.storage()
         .persistent()
-        .get(&DataKey::VestingTimeline(timeline_id))
+        .get(&CampaignKey::VestingTimeline(timeline_id))
         .unwrap_or_else(|| panic_with_error!(env, ContractError::InvalidInterval))
 }
 
@@ -84,7 +84,7 @@ pub fn update_vesting_timeline(
     vesting_duration: u64,
 ) {
     admin.require_auth();
-    let contract_admin = admin::get_admin(env);
+    let contract_admin = core::get_admin(env);
     if admin != contract_admin {
         panic_with_error!(env, ContractError::NotAuthorized);
     }
@@ -99,7 +99,7 @@ pub fn update_vesting_timeline(
 
     env.storage()
         .persistent()
-        .set(&DataKey::VestingTimeline(timeline_id), &timeline);
+        .set(&CampaignKey::VestingTimeline(timeline_id), &timeline);
 
     let now = env.ledger().timestamp();
     events::publish_vesting_timeline_updated_event(
@@ -120,7 +120,7 @@ pub fn configure_crowdfund_vesting(
     total_vesting_amount: i128,
 ) {
     admin.require_auth();
-    let contract_admin = admin::get_admin(env);
+    let contract_admin = core::get_admin(env);
     if admin != contract_admin {
         panic_with_error!(env, ContractError::NotAuthorized);
     }
@@ -140,7 +140,7 @@ pub fn configure_crowdfund_vesting(
 
     env.storage()
         .persistent()
-        .set(&DataKey::CrowdfundVestingConfig(crowdfund_id), &config);
+        .set(&CampaignKey::CrowdfundVestingConfig(crowdfund_id), &config);
 
     let now = env.ledger().timestamp();
     events::publish_crowdfund_vesting_configured_event(
@@ -156,7 +156,7 @@ pub fn configure_crowdfund_vesting(
 pub fn get_crowdfund_vesting_config(env: &Env, crowdfund_id: u64) -> CrowdfundVestingConfig {
     env.storage()
         .persistent()
-        .get(&DataKey::CrowdfundVestingConfig(crowdfund_id))
+        .get(&CampaignKey::CrowdfundVestingConfig(crowdfund_id))
         .unwrap_or_else(|| panic_with_error!(env, ContractError::InvoiceNotFound))
 }
 
@@ -169,7 +169,7 @@ pub fn add_vesting_schedule(
     unlock_timestamp: u64,
 ) {
     admin.require_auth();
-    let contract_admin = admin::get_admin(env);
+    let contract_admin = core::get_admin(env);
     if admin != contract_admin {
         panic_with_error!(env, ContractError::NotAuthorized);
     }
@@ -188,19 +188,15 @@ pub fn add_vesting_schedule(
         released: false,
     };
 
-    env.storage()
-        .persistent()
-        .set(&DataKey::VestingSchedule(timeline_id, tranche_index), &schedule);
+    env.storage().persistent().set(
+        &CampaignKey::VestingSchedule(timeline_id, tranche_index),
+        &schedule,
+    );
 }
 
-pub fn release_vesting_schedule(
-    env: &Env,
-    admin: Address,
-    timeline_id: u64,
-    tranche_index: u64,
-) {
+pub fn release_vesting_schedule(env: &Env, admin: Address, timeline_id: u64, tranche_index: u64) {
     admin.require_auth();
-    let contract_admin = admin::get_admin(env);
+    let contract_admin = core::get_admin(env);
     if admin != contract_admin {
         panic_with_error!(env, ContractError::NotAuthorized);
     }
@@ -208,7 +204,7 @@ pub fn release_vesting_schedule(
     let mut schedule = env
         .storage()
         .persistent()
-        .get::<_, VestingSchedule>(&DataKey::VestingSchedule(timeline_id, tranche_index))
+        .get::<_, VestingSchedule>(&CampaignKey::VestingSchedule(timeline_id, tranche_index))
         .unwrap_or_else(|| panic_with_error!(env, ContractError::InvoiceNotFound));
 
     if schedule.released {
@@ -221,9 +217,10 @@ pub fn release_vesting_schedule(
     }
 
     schedule.released = true;
-    env.storage()
-        .persistent()
-        .set(&DataKey::VestingSchedule(timeline_id, tranche_index), &schedule);
+    env.storage().persistent().set(
+        &CampaignKey::VestingSchedule(timeline_id, tranche_index),
+        &schedule,
+    );
 
     events::publish_vesting_schedule_released_event(
         env,
