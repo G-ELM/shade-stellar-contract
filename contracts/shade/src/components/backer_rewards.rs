@@ -268,7 +268,7 @@ pub fn select_backer_reward_tier(env: &Env, backer: Address, campaign_id: u64, t
         backer,
         tier_index,
         tier.min_pledge,
-        tier.perks.len() as u32,
+        tier.perks.len(),
         env.ledger().timestamp(),
     );
 }
