@@ -147,11 +147,6 @@ pub struct PledgeReceivedEvent {
 }
 
 #[contractevent]
-pub struct AffiliateRegisteredEvent {
-    pub affiliate: Address,
-}
-
-#[contractevent]
 pub struct AffiliateAccruedEvent {
     pub affiliate: Address,
     pub contributor: Address,
@@ -271,6 +266,12 @@ enum DataKey {
     Contributors,
     RefundProcessed,
     MatchingPool,
+    TotalMatched,
+    Badge(Address, u32),
+    BadgeCount(Address),
+    EarlyBackerLimit,
+    WhaleThreshold,
+    DiscountTiers,
     // Public comment attached to a contributor pledge.
     // ── Affiliate / referral tracking (#349) ────────────────────────────────
     // Commission rate (in basis points) paid to affiliates from the raised pool.
@@ -409,6 +410,7 @@ impl CrowdfundContract {
             .storage()
             .persistent()
             .get(&DataKey::ShadeGateway)
+            .unwrap_or_else(|| panic_with_error!(&env, CrowdfundError::ShadeGatewayNotSet));
         let discount_bps: u32 = {
             let now = env.ledger().timestamp();
             if let Some(tiers) = env.storage().persistent().get::<_, Vec<DiscountTier>>(&DataKey::DiscountTiers) {
@@ -426,7 +428,6 @@ impl CrowdfundContract {
         };
 
         let discounted_amount = amount * (10_000i128 - discount_bps as i128) / 10_000i128;
-            .unwrap_or_else(|| panic_with_error!(&env, CrowdfundError::ShadeGatewayNotSet));
         let token_addr: Address = env
             .storage()
             .persistent()

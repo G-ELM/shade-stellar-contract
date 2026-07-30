@@ -63,11 +63,11 @@ pub enum CrowdfundError {
     // This contributor has already used a referral code for this campaign.
     ReferralAlreadyUsed = 32,
     // Caller is not authorized for this privileged view (organizer only).
-    NotAuthorized = 28,
+    NotAuthorized = 33,
     // The backer already holds this badge.
-    BadgeAlreadyAwarded = 29,
+    BadgeAlreadyAwarded = 34,
     // The backer does not meet this badge's on-chain eligibility rules.
-    BadgeNotEligible = 30,
+    BadgeNotEligible = 35,
     // Badge eligibility thresholds have not been configured by the organizer.
-    BadgeConfigNotSet = 31,
+    BadgeConfigNotSet = 36,
 }
