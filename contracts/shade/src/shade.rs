@@ -8,18 +8,18 @@ use crate::components::{
     nft as nft_component, pausable as pausable_component, platform_fee as platform_fee_component,
     pledge as pledge_component, search as search_component,
     stretch_goals as stretch_goals_component, subscription as subscription_component,
-    upgrade as upgrade_component,
+    upgrade as upgrade_component, vesting as vesting_component,
 };
 use crate::errors::{ContractError, MultiSigError};
 use crate::events;
 use crate::shade_interface::ShadeTrait;
 use crate::types::{
     BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo, CrossChainBridgePayload,
-    DataKey, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice, InvoiceFilter,
-    InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
-    MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit, Pledge,
-    PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
+    CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo, CreatorVesting,
+    CrossChainBridgePayload, DataKey, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice,
+    InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary,
+    MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit,
+    Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
     SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
     WithdrawalProposal, WithdrawalProposalFilter,
 };
@@ -1438,5 +1438,66 @@ impl ShadeTrait for Shade {
 
     fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)> {
         campaign_component::get_campaign_leaderboard(&env, campaign_id, limit)
+    }
+
+    // ── Creator fund vesting ──────────────────────────────────────────────────
+
+    /// Commits a backer campaign's raised funds to a cliff-plus-linear vesting
+    /// schedule paying out to its creator. Owning merchant only; the terms are
+    /// fixed once published.
+    fn create_creator_vesting(
+        env: Env,
+        creator: Address,
+        campaign_id: u64,
+        total_amount: i128,
+        start_time: u64,
+        cliff_duration: u64,
+        vesting_duration: u64,
+        initial_unlock_bps: u32,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        vesting_component::create_creator_vesting(
+            &env,
+            creator,
+            campaign_id,
+            total_amount,
+            start_time,
+            cliff_duration,
+            vesting_duration,
+            initial_unlock_bps,
+        );
+    }
+
+    /// Pays the creator everything vested since their last release, returning
+    /// the amount transferred.
+    fn release_creator_vesting(env: Env, creator: Address, campaign_id: u64) -> i128 {
+        pausable_component::assert_not_paused(&env);
+        vesting_component::release_creator_vesting(&env, creator, campaign_id)
+    }
+
+    /// Freezes a schedule so nothing further vests. Admin only; the
+    /// already-vested balance stays claimable by the creator.
+    fn revoke_creator_vesting(env: Env, admin: Address, campaign_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        vesting_component::revoke_creator_vesting(&env, admin, campaign_id);
+    }
+
+    fn get_creator_vesting(env: Env, campaign_id: u64) -> CreatorVesting {
+        vesting_component::get_creator_vesting(&env, campaign_id)
+    }
+
+    /// Amount vested as of now, released or not.
+    fn get_vested_amount(env: Env, campaign_id: u64) -> i128 {
+        vesting_component::get_vested_amount(&env, campaign_id)
+    }
+
+    /// Amount the creator could release right now.
+    fn get_releasable_amount(env: Env, campaign_id: u64) -> i128 {
+        vesting_component::get_releasable_amount(&env, campaign_id)
+    }
+
+    /// Campaign IDs this creator vests funds from, in creation order.
+    fn get_creator_vesting_campaigns(env: Env, creator: Address) -> Vec<u64> {
+        vesting_component::get_creator_vesting_campaigns(&env, creator)
     }
 }

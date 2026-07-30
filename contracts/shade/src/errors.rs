@@ -18,6 +18,7 @@
 //! | 160–179   | [`EscrowError`]     |
 //! | 200–239   | [`CampaignError`]   |
 //! | 240–259   | [`StretchGoalError`]|
+//! | 260–279   | [`VestingError`]    |
 
 use soroban_sdk::contracterror;
 
@@ -248,4 +249,34 @@ pub enum StretchGoalError {
     NotGoalOwner = 250,
     /// The campaign already has the maximum number of stretch goals.
     TooManyStretchGoals = 251,
+}
+
+/// Creator fund-vesting errors. Codes 260–279.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VestingError {
+    /// No vesting schedule exists for the supplied campaign.
+    VestingNotFound = 260,
+    /// The campaign already has a vesting schedule; schedules are immutable
+    /// once created so backers can rely on the published terms.
+    VestingAlreadyExists = 261,
+    /// The caller is not the creator this schedule pays out to.
+    NotVestingBeneficiary = 262,
+    /// `vesting_duration` is zero, or the cliff outlasts the whole schedule.
+    InvalidVestingDuration = 263,
+    /// `initial_unlock_bps` exceeds 100% (10_000 basis points).
+    InvalidUnlockBps = 264,
+    /// The schedule commits more than the campaign has actually raised.
+    VestingAmountExceedsRaised = 265,
+    /// Nothing has vested since the last release.
+    NothingToRelease = 266,
+    /// The schedule was revoked; nothing further will vest.
+    VestingRevoked = 267,
+    /// Every vested token has already been released.
+    VestingCompleted = 268,
+    /// `start_time` is in the past, which would unlock funds retroactively.
+    InvalidVestingStart = 269,
+    /// This creator already holds the maximum number of vesting schedules.
+    TooManyVestingSchedules = 270,
 }
