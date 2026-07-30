@@ -11,6 +11,7 @@ pub mod core;
 pub mod cross_chain_pledge;
 pub mod escrow;
 pub mod event;
+pub mod fiat_goals;
 pub mod governance;
 pub mod history;
 pub mod invoice;

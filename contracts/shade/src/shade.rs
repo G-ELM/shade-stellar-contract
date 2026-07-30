@@ -2,10 +2,11 @@ use crate::components::{
     access_control as access_control_component, admin as admin_component,
     auto_withdrawal as auto_withdrawal_component, bridge as bridge_component,
     campaign as campaign_component, campaigns as campaigns_component, core as core_component,
-    escrow as escrow_component, governance as governance_component, history as history_component,
-    invoice as invoice_component, leaderboard as leaderboard_component,
-    merchant as merchant_component, multisig_withdrawal as multisig_component,
-    nft as nft_component, pausable as pausable_component, platform_fee as platform_fee_component,
+    escrow as escrow_component, fiat_goals as fiat_goals_component,
+    governance as governance_component, history as history_component, invoice as invoice_component,
+    leaderboard as leaderboard_component, merchant as merchant_component,
+    multisig_withdrawal as multisig_component, nft as nft_component,
+    pausable as pausable_component, platform_fee as platform_fee_component,
     pledge as pledge_component, search as search_component,
     stretch_goals as stretch_goals_component, subscription as subscription_component,
     upgrade as upgrade_component, vesting as vesting_component,
@@ -15,13 +16,13 @@ use crate::events;
 use crate::shade_interface::ShadeTrait;
 use crate::types::{
     BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo, CreatorVesting,
-    CrossChainBridgePayload, DataKey, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice,
-    InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary,
-    MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit,
-    Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
-    SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
-    WithdrawalProposal, WithdrawalProposalFilter,
+    CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo,
+    CreatorVesting, CrossChainBridgePayload, DataKey, DonorInfo, Escrow, Event, EventFilter,
+    FeeCampaign, FiatGoalQuote, Invoice, InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics,
+    MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig,
+    PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward,
+    Subscription, SubscriptionFilter, SubscriptionPlan, SubscriptionPlanFilter, Ticket,
+    TokenAnalytics, Transaction, UpgradeProposal, WithdrawalProposal, WithdrawalProposalFilter,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -1499,5 +1500,89 @@ impl ShadeTrait for Shade {
     /// Campaign IDs this creator vests funds from, in creation order.
     fn get_creator_vesting_campaigns(env: Env, creator: Address) -> Vec<u64> {
         vesting_component::get_creator_vesting_campaigns(&env, creator)
+    }
+
+    // ── Fiat-pegged campaign goals ────────────────────────────────────────────
+
+    /// Pegs a campaign's funding target to a fiat currency, valued through the
+    /// campaign token's price oracle. Owning merchant only, once per campaign;
+    /// the published target is immutable.
+    fn set_campaign_fiat_goal(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        currency: String,
+        goal_amount: i128,
+        decimals: u32,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        fiat_goals_component::set_campaign_fiat_goal(
+            &env,
+            &merchant,
+            campaign_id,
+            &currency,
+            goal_amount,
+            decimals,
+        );
+    }
+
+    /// Values a token contribution against a campaign's fiat peg and credits
+    /// the fiat figure to the goal, returning it.
+    fn record_fiat_contribution(
+        env: Env,
+        contributor: Address,
+        campaign_id: u64,
+        token_amount: i128,
+    ) -> i128 {
+        pausable_component::assert_not_paused(&env);
+        fiat_goals_component::record_fiat_contribution(
+            &env,
+            &contributor,
+            campaign_id,
+            token_amount,
+        )
+    }
+
+    /// Re-reads the oracle and publishes a fresh on-ledger valuation. Owning
+    /// merchant only; use `get_campaign_fiat_goal_quote` for a read-only view.
+    fn refresh_campaign_fiat_quote(env: Env, merchant: Address, campaign_id: u64) -> FiatGoalQuote {
+        pausable_component::assert_not_paused(&env);
+        fiat_goals_component::refresh_campaign_fiat_quote(&env, &merchant, campaign_id)
+    }
+
+    /// Stops further contributions being valued against a peg. Owning merchant
+    /// or admin; the raised total is preserved.
+    fn close_campaign_fiat_goal(env: Env, caller: Address, campaign_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        fiat_goals_component::close_campaign_fiat_goal(&env, &caller, campaign_id);
+    }
+
+    fn get_campaign_fiat_goal(env: Env, campaign_id: u64) -> CampaignFiatGoal {
+        fiat_goals_component::get_campaign_fiat_goal(&env, campaign_id)
+    }
+
+    /// Whether this campaign's goal is fiat-pegged.
+    fn has_campaign_fiat_goal(env: Env, campaign_id: u64) -> bool {
+        fiat_goals_component::has_campaign_fiat_goal(&env, campaign_id)
+    }
+
+    /// Live valuation of a peg at the current oracle price.
+    fn get_campaign_fiat_goal_quote(env: Env, campaign_id: u64) -> FiatGoalQuote {
+        fiat_goals_component::get_campaign_fiat_goal_quote(&env, campaign_id)
+    }
+
+    /// Fiat a token contribution would be credited at right now.
+    fn quote_fiat_contribution(env: Env, campaign_id: u64, token_amount: i128) -> i128 {
+        fiat_goals_component::quote_fiat_contribution(&env, campaign_id, token_amount)
+    }
+
+    /// Cumulative fiat one backer has contributed to a campaign.
+    fn get_backer_fiat_contribution(env: Env, campaign_id: u64, backer: Address) -> i128 {
+        fiat_goals_component::get_backer_fiat_contribution(&env, campaign_id, &backer)
+    }
+
+    /// Pegs across a merchant's campaigns, in campaign-creation order.
+    fn get_merchant_fiat_goals(env: Env, merchant_id: u64) -> Vec<CampaignFiatGoal> {
+        fiat_goals_component::get_merchant_fiat_goals(&env, merchant_id)
     }
 }

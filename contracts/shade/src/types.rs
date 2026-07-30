@@ -15,6 +15,8 @@
 //!   comments, vesting, hard-cap voting, leaderboards
 //! - [`BackerKey`]   — backer reward tiers and perks
 //! - [`StretchKey`]  — stretch-goal milestones
+//! - [`VestingKey`]  — creator fund vesting
+//! - [`FiatGoalKey`] — fiat-pegged campaign goals
 //! - [`NftKey`]      — NFT reward collections
 //! - [`GovKey`]      — DAO governance
 //! - [`BridgeKey`]   — cross-chain bridge and pledges
@@ -208,6 +210,25 @@ pub enum VestingKey {
     /// Reverse index: creator address -> the campaign IDs they vest funds from.
     /// Holds only `u64` IDs rather than whole records, keeping the entry small.
     CreatorVestingList(Address),
+}
+
+/// Fiat-pegged campaign goal storage keys.
+///
+/// A dedicated enum, like [`VestingKey`], so this feature adds no cases to the
+/// near-full [`CampaignKey`] (Soroban caps every enum at 50 cases).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum FiatGoalKey {
+    /// The single fiat-denominated goal pegged to a campaign, keyed by
+    /// `campaign_id`. Keying on the campaign avoids a separate ID counter and
+    /// its extra storage entry, and makes "is this campaign fiat-pegged?" a
+    /// single read.
+    CampaignFiatGoal(u64),
+    /// Cumulative fiat value one backer has contributed to one campaign, keyed
+    /// by `(campaign_id, backer)`. A bare `i128` rather than a record, and
+    /// updated in place, so per-backer tracking costs one small entry that
+    /// never grows.
+    BackerFiatContribution(u64, Address),
 }
 
 /// NFT reward storage keys.
@@ -1128,6 +1149,90 @@ pub struct StretchGoalReward {
     pub granted_at: u64,
     /// Ledger timestamp when the backer claimed; `0` while unclaimed.
     pub claimed_at: u64,
+}
+
+// ── Fiat-pegged campaign goals ────────────────────────────────────────────────
+
+#[contracttype]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum FiatGoalStatus {
+    /// Accepting contributions; the fiat target has not been met.
+    Active = 0,
+    /// The fiat target has been met. Still accepting contributions, so an
+    /// overfunded campaign keeps accruing.
+    Reached = 1,
+    /// Wound down by the owning merchant or the admin; no further contributions
+    /// are valued against it.
+    Closed = 2,
+}
+
+/// A campaign funding target denominated in fiat rather than in the campaign's
+/// token, tracked against oracle-valued contributions.
+/// Stored under [`FiatGoalKey::CampaignFiatGoal`].
+///
+/// `goal_amount` and `raised_amount` are both minor units of `currency` scaled
+/// by `decimals` (e.g. `1_000_000` with `decimals = 2` is $10,000.00). Each
+/// contribution is valued once, at the oracle price of the moment it lands, and
+/// that snapshot is what accrues — so a later price swing never revalues a
+/// contribution that was already counted.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CampaignFiatGoal {
+    pub campaign_id: u64,
+    /// Merchant that owns the campaign; the only address allowed to manage the
+    /// peg.
+    pub merchant: Address,
+    /// Token contributions are denominated in, and whose oracle prices them.
+    pub token: Address,
+    /// Quote currency passed to the oracle, e.g. `"USD"`.
+    pub currency: String,
+    /// Fiat target, in minor units scaled by `decimals`.
+    pub goal_amount: i128,
+    /// Number of fractional digits `goal_amount` and `raised_amount` carry.
+    pub decimals: u32,
+    /// Cumulative fiat value credited so far, each contribution snapshotted at
+    /// the price it landed at.
+    pub raised_amount: i128,
+    /// Token base units folded into `raised_amount`.
+    pub raised_tokens: i128,
+    /// Number of contributions valued against this goal.
+    pub contribution_count: u32,
+    pub status: FiatGoalStatus,
+    pub created_at: u64,
+    /// Most recent oracle price used, scaled by the oracle's `price_decimals`.
+    pub last_price: i128,
+    /// Ledger timestamp `last_price` was read at.
+    pub last_priced_at: u64,
+    /// Ledger timestamp the target was met; `0` while unmet.
+    pub reached_at: u64,
+}
+
+/// A live valuation of a fiat-pegged goal at the current oracle price.
+///
+/// Derived on demand and never stored: it exists so a UI can render "$4,200 of
+/// $10,000 — 1,383 XLM to go" from one read-only call, without paying rent on a
+/// figure that goes stale the moment the price moves.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FiatGoalQuote {
+    pub campaign_id: u64,
+    pub token: Address,
+    pub currency: String,
+    pub goal_amount: i128,
+    pub raised_amount: i128,
+    /// Fiat still needed to meet the target; `0` once met.
+    pub remaining_amount: i128,
+    /// Current oracle price for one whole token, scaled by `price_decimals`.
+    pub price: i128,
+    pub price_decimals: u32,
+    /// Token base units that would close `remaining_amount` at `price`, rounded
+    /// up so contributing exactly this much always meets the target.
+    pub tokens_required: i128,
+    /// Progress toward the target in basis points, capped at 10_000.
+    pub progress_bps: u32,
+    pub status: FiatGoalStatus,
+    pub quoted_at: u64,
 }
 
 // ── NFT rewards ───────────────────────────────────────────────────────────────

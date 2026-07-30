@@ -359,12 +359,9 @@ pub fn create_campaign(
     env.storage()
         .persistent()
         .set(&CampaignKey::CampaignCount, &campaign_id);
-    // Seed the empty merchant campaigns vec before push_unique (avoids `has`
-    // returning false for ids that aren't yet allocated).
-    env.storage().persistent().set(
-        &CampaignKey::MerchantCampaigns(merchant_id),
-        &Vec::<u64>::new(env),
-    );
+    // `push_unique_u64` treats a missing index as empty, so no seeding write is
+    // needed here — and an unconditional one would reset the index on every
+    // create, leaving `get_merchant_campaigns` reporting only the newest.
     push_unique_u64(
         env,
         &CampaignKey::MerchantCampaigns(merchant_id),
