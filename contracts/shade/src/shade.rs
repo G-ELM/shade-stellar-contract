@@ -1,8 +1,8 @@
 use crate::components::{
     access_control as access_control_component, admin as admin_component,
-    auto_withdrawal as auto_withdrawal_component, bridge as bridge_component,
-    campaign as campaign_component, campaigns as campaigns_component, core as core_component,
-    escrow as escrow_component, fiat_goals as fiat_goals_component,
+    analytics as analytics_component, auto_withdrawal as auto_withdrawal_component,
+    bridge as bridge_component, campaign as campaign_component, campaigns as campaigns_component,
+    core as core_component, escrow as escrow_component, fiat_goals as fiat_goals_component,
     governance as governance_component, history as history_component, invoice as invoice_component,
     leaderboard as leaderboard_component, merchant as merchant_component,
     multisig_withdrawal as multisig_component, nft as nft_component,
@@ -15,14 +15,15 @@ use crate::errors::{ContractError, MultiSigError};
 use crate::events;
 use crate::shade_interface::ShadeTrait;
 use crate::types::{
-    BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo,
-    CreatorVesting, CrossChainBridgePayload, DataKey, DonorInfo, Escrow, Event, EventFilter,
-    FeeCampaign, FiatGoalQuote, Invoice, InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics,
-    MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig,
-    PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward,
-    Subscription, SubscriptionFilter, SubscriptionPlan, SubscriptionPlanFilter, Ticket,
-    TokenAnalytics, Transaction, UpgradeProposal, WithdrawalProposal, WithdrawalProposalFilter,
+    AnalyticsExport, BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate,
+    CampaignCategory, CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignStats,
+    CampaignTag, ContractInfo, CreatorVesting, CrossChainBridgePayload, DataKey, DonorInfo, Escrow,
+    Event, EventFilter, ExportFormat, FeeCampaign, FiatGoalQuote, Invoice, InvoiceFilter,
+    InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
+    MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit, Pledge,
+    PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
+    SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
+    WithdrawalProposal, WithdrawalProposalFilter,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -1584,5 +1585,40 @@ impl ShadeTrait for Shade {
     /// Pegs across a merchant's campaigns, in campaign-creation order.
     fn get_merchant_fiat_goals(env: Env, merchant_id: u64) -> Vec<CampaignFiatGoal> {
         fiat_goals_component::get_merchant_fiat_goals(&env, merchant_id)
+    }
+
+    // ── Campaign analytics exports ────────────────────────────────────────────
+
+    /// Snapshots a campaign's analytics into an immutable export record and
+    /// emits it for off-chain rendering, returning the export's ID. Owning
+    /// merchant only; each export reports the delta since the campaign's
+    /// previous one alongside the cumulative figures.
+    fn export_campaign_analytics(
+        env: Env,
+        creator: Address,
+        campaign_id: u64,
+        format: ExportFormat,
+    ) -> u64 {
+        pausable_component::assert_not_paused(&env);
+        analytics_component::export_campaign_analytics(&env, &creator, campaign_id, format)
+    }
+
+    /// A campaign's running contribution aggregate, as exports snapshot it.
+    fn get_campaign_stats(env: Env, campaign_id: u64) -> CampaignStats {
+        analytics_component::get_campaign_stats(&env, campaign_id)
+    }
+
+    fn get_analytics_export(env: Env, export_id: u64) -> AnalyticsExport {
+        analytics_component::get_analytics_export(&env, export_id)
+    }
+
+    /// Export IDs for a campaign, in the order they were run.
+    fn get_campaign_exports(env: Env, campaign_id: u64) -> Vec<u64> {
+        analytics_component::get_campaign_exports(&env, campaign_id)
+    }
+
+    /// The most recent export for a campaign.
+    fn get_latest_campaign_export(env: Env, campaign_id: u64) -> AnalyticsExport {
+        analytics_component::get_latest_campaign_export(&env, campaign_id)
     }
 }

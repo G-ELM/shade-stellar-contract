@@ -58,6 +58,7 @@ pub mod test_campaigns;
 pub mod test_feature_228;
 pub mod test_feature_231;
 
+pub mod test_analytics_export;
 pub mod test_backer_rewards;
 pub mod test_creator_vesting;
 pub mod test_fiat_goals;
