@@ -26,3 +26,7 @@ pub mod backer_rewards;
 pub mod event;
 pub mod leaderboard;
 pub mod cross_chain_pledge;
+pub mod vesting;
+pub mod stretch_goals;
+pub mod comments;
+pub mod nft;

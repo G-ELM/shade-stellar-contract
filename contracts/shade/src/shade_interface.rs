@@ -3,6 +3,7 @@ use crate::types::{
     InvoiceFilter, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
     OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
     TokenAnalytics, Transaction,
+    CrowdfundVestingConfig, VestingSchedule, VestingTimeline,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
 
@@ -227,4 +228,40 @@ pub trait ShadeTrait {
     fn get_campaign_participant(env: Env, campaign_id: u64, participant: Address) -> CampaignParticipant;
     fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate;
     fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)>;
+
+    // ── Creator Vesting (#208) ────────────────────────────────────────────────
+    fn create_vesting_timeline(
+        env: Env,
+        admin: Address,
+        name: String,
+        cliff_duration: u64,
+        vesting_duration: u64,
+        unlock_percentage: i128,
+    ) -> u64;
+    fn get_vesting_timeline(env: Env, timeline_id: u64) -> VestingTimeline;
+    fn update_vesting_timeline(
+        env: Env,
+        admin: Address,
+        timeline_id: u64,
+        cliff_duration: u64,
+        vesting_duration: u64,
+    );
+    fn configure_crowdfund_vesting(
+        env: Env,
+        admin: Address,
+        crowdfund_id: u64,
+        timeline_id: u64,
+        total_vesting_amount: i128,
+    );
+    fn get_crowdfund_vesting_config(env: Env, crowdfund_id: u64) -> CrowdfundVestingConfig;
+    fn get_vesting_schedule(env: Env, timeline_id: u64, tranche_index: u64) -> VestingSchedule;
+    fn add_vesting_schedule(
+        env: Env,
+        admin: Address,
+        timeline_id: u64,
+        tranche_index: u64,
+        unlock_amount: i128,
+        unlock_timestamp: u64,
+    );
+    fn release_vesting_schedule(env: Env, admin: Address, timeline_id: u64, tranche_index: u64);
 }

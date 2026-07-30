@@ -124,6 +124,15 @@ pub enum DataKey {
     BackerRewardFulfilled(u64, Address),
     BackerPerkClaimed(u64, Address, u32),
     BackerTierBackerCount(u64, u32),
+    // ── Creator Vesting (#208) ────────────────────────────────────────────────
+    /// Running counter for vesting timeline IDs (never decreases).
+    VestingTimelineCount,
+    /// A named vesting schedule template keyed by timeline ID.
+    VestingTimeline(u64),
+    /// Per-(timeline, tranche) vesting schedule entry.
+    VestingSchedule(u64, u64),
+    /// Crowdfund-to-vesting-timeline binding.
+    CrowdfundVestingConfig(u64),
 }
 
 
@@ -791,4 +800,58 @@ pub struct UpgradeProposal {
     pub approvals: u32,
     pub rejections: u32,
     pub status: ProposalStatus,
+}
+
+// ── Creator Vesting types (#208) ──────────────────────────────────────────────
+
+/// A named vesting template that defines cliff and vesting duration settings.
+/// Created by the admin; can be linked to multiple crowdfunds.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VestingTimeline {
+    /// Auto-incremented unique identifier.
+    pub id: u64,
+    /// Human-readable label for this timeline.
+    pub name: String,
+    /// Seconds before any tokens begin to vest.
+    pub cliff_duration: u64,
+    /// Total vesting window in seconds (starts at funding).
+    pub vesting_duration: u64,
+    /// Percentage of tokens that unlock at cliff, in basis points (1–10 000).
+    pub unlock_percentage: i128,
+    /// Admin address that created and owns this timeline.
+    pub admin: Address,
+    /// Ledger timestamp at creation.
+    pub created_at: u64,
+}
+
+/// Links a crowdfund campaign to a vesting timeline and records the total
+/// amount of tokens subject to that vesting schedule.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CrowdfundVestingConfig {
+    /// Crowdfund campaign identifier.
+    pub crowdfund_id: u64,
+    /// Vesting timeline this campaign uses.
+    pub timeline_id: u64,
+    /// Total amount (in token base units) to vest over the timeline.
+    pub total_vesting_amount: i128,
+    /// Ledger timestamp when this binding was created.
+    pub configured_at: u64,
+}
+
+/// A single tranche (unlock event) within a vesting timeline.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VestingSchedule {
+    /// The parent timeline for this tranche.
+    pub timeline_id: u64,
+    /// 0-based index of this tranche within the timeline.
+    pub tranche_index: u64,
+    /// Token amount unlocked by this tranche.
+    pub unlock_amount: i128,
+    /// Ledger timestamp at or after which this tranche may be released.
+    pub unlock_timestamp: u64,
+    /// Whether the tranche has already been released.
+    pub released: bool,
 }

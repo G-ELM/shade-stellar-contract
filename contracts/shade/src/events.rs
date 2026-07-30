@@ -1886,3 +1886,118 @@ pub fn publish_escrow_expired_refund_event(
     }
     .publish(env);
 }
+
+// ── Creator Vesting events (#208) ─────────────────────────────────────────────
+
+/// Emitted when a new vesting timeline is created by the admin.
+#[contractevent]
+pub struct VestingTimelineCreatedEvent {
+    pub timeline_id: u64,
+    pub name: String,
+    pub cliff_duration: u64,
+    pub vesting_duration: u64,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn publish_vesting_timeline_created_event(
+    env: &Env,
+    timeline_id: u64,
+    name: String,
+    cliff_duration: u64,
+    vesting_duration: u64,
+    admin: Address,
+    timestamp: u64,
+) {
+    VestingTimelineCreatedEvent {
+        timeline_id,
+        name,
+        cliff_duration,
+        vesting_duration,
+        admin,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when cliff_duration / vesting_duration are updated on a timeline.
+#[contractevent]
+pub struct VestingTimelineUpdatedEvent {
+    pub timeline_id: u64,
+    pub cliff_duration: u64,
+    pub vesting_duration: u64,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_vesting_timeline_updated_event(
+    env: &Env,
+    timeline_id: u64,
+    cliff_duration: u64,
+    vesting_duration: u64,
+    admin: Address,
+    timestamp: u64,
+) {
+    VestingTimelineUpdatedEvent {
+        timeline_id,
+        cliff_duration,
+        vesting_duration,
+        admin,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a crowdfund campaign is linked to a vesting timeline.
+#[contractevent]
+pub struct CrowdfundVestingConfiguredEvent {
+    pub crowdfund_id: u64,
+    pub timeline_id: u64,
+    pub total_vesting_amount: i128,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_crowdfund_vesting_configured_event(
+    env: &Env,
+    crowdfund_id: u64,
+    timeline_id: u64,
+    total_vesting_amount: i128,
+    admin: Address,
+    timestamp: u64,
+) {
+    CrowdfundVestingConfiguredEvent {
+        crowdfund_id,
+        timeline_id,
+        total_vesting_amount,
+        admin,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a vesting schedule tranche is released.
+#[contractevent]
+pub struct VestingScheduleReleasedEvent {
+    pub timeline_id: u64,
+    pub tranche_index: u64,
+    pub unlock_amount: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_vesting_schedule_released_event(
+    env: &Env,
+    timeline_id: u64,
+    tranche_index: u64,
+    unlock_amount: i128,
+    timestamp: u64,
+) {
+    VestingScheduleReleasedEvent {
+        timeline_id,
+        tranche_index,
+        unlock_amount,
+        timestamp,
+    }
+    .publish(env);
+}
