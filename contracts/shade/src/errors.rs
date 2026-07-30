@@ -117,6 +117,23 @@ pub enum ContractError {
     InvalidTierOrdering = 66,
     CampaignNotActive = 67,
   BridgeDepositProcessed = 68,
+    // ── Campaign KYC & verification system (#324) ─────────────────────────
+    /// The referenced KYC request ID does not exist.
+    KycRequestNotFound = 69,
+    /// The subject already has a KYC request in Pending state.
+    KycRequestAlreadyPending = 70,
+    /// The subject's KYC is already in Approved state; no resubmission needed.
+    KycAlreadyApproved = 71,
+    /// The KYC request is not in the expected status for this operation.
+    InvalidKycRequestStatus = 72,
+    /// The subject does not have an approved (and non-expired) KYC status.
+    KycNotApproved = 73,
+    /// A KYC configuration for this campaign has already been registered.
+    CampaignKycAlreadyRegistered = 74,
+    /// No KYC configuration found for the referenced campaign.
+    CampaignKycNotFound = 75,
+    /// The campaign KYC configuration has already been verified.
+    CampaignKycAlreadyVerified = 76,
 }
 
 /// DAO governance errors. Kept in a separate enum (codes offset to 100+) so the

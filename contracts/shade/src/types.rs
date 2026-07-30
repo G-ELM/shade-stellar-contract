@@ -124,6 +124,25 @@ pub enum DataKey {
     BackerRewardFulfilled(u64, Address),
     BackerPerkClaimed(u64, Address, u32),
     BackerTierBackerCount(u64, u32),
+    // ── Campaign KYC & verification system (#324) ─────────────────────────────
+    /// Running counter for KYC request IDs (never decrements).
+    KycRequestCount,
+    /// A single KYC verification request, keyed by its auto-incremented ID.
+    KycRequest(u64),
+    /// Whether an address is a registered KYC reviewer (value: bool).
+    KycReviewer(Address),
+    /// The address's current overall KYC status (value: VerificationStatus).
+    KycStatus(Address),
+    /// The KYC request ID most recently approved for an address (value: u64).
+    KycApprovedRequestId(Address),
+    /// Expiration timestamp (unix seconds) of a subject's current approval (value: u64).
+    KycExpiration(Address),
+    /// Per-campaign KYC configuration and creator verification status.
+    CampaignKycStatus(u64),
+    /// Per-campaign, per-backer KYC status cache.
+    BackerKycStatus(u64, Address),
+    /// Whether a specific backer is KYC-verified for a specific campaign.
+    CampaignBackerVerified(u64, Address),
 }
 
 
@@ -791,4 +810,99 @@ pub struct UpgradeProposal {
     pub approvals: u32,
     pub rejections: u32,
     pub status: ProposalStatus,
+}
+
+// ── Campaign KYC & Verification System (#324) ─────────────────────────────────
+
+/// Lifecycle status of an identity-verification record.
+#[contracttype]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VerificationStatus {
+    /// No request has been submitted yet.
+    Unverified = 0,
+    /// Request submitted; awaiting reviewer action.
+    Pending = 1,
+    /// Request approved; subject is KYC-cleared.
+    Approved = 2,
+    /// Request rejected by a reviewer.
+    Rejected = 3,
+    /// Previously approved status revoked for compliance reasons.
+    Suspended = 4,
+}
+
+/// The scope / purpose of a KYC verification request.
+#[contracttype]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VerificationType {
+    /// General identity check for individual users.
+    Individual = 0,
+    /// Enhanced check required before launching a crowdfunding campaign.
+    CampaignCreator = 1,
+    /// Lightweight check for campaign backers (when the campaign requires it).
+    Backer = 2,
+}
+
+/// A single KYC verification request submitted by or on behalf of `subject`.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct KycRequest {
+    /// Auto-incremented unique ID.
+    pub id: u64,
+    /// The address whose identity is being verified.
+    pub subject: Address,
+    /// What kind of verification is being requested.
+    pub verification_type: VerificationType,
+    /// Ledger timestamp when the request was created.
+    pub submitted_at: u64,
+    /// Ledger timestamp when a reviewer last acted on the request; 0 = never.
+    pub reviewed_at: u64,
+    /// Address of the reviewer who last acted; zero-address placeholder when
+    /// not yet reviewed. Stored as `Option<Address>` to keep the field
+    /// XDR-compatible inside a `#[contracttype]`.
+    pub reviewer: Option<Address>,
+    /// Current lifecycle status of the request.
+    pub status: VerificationStatus,
+    /// How many supporting documents were attached (informational).
+    pub document_count: u32,
+    /// Arbitrary off-chain metadata string (e.g. encrypted doc reference, IPFS CID).
+    pub metadata: soroban_sdk::String,
+}
+
+/// Per-campaign KYC configuration maintained by campaign creators / reviewers.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CampaignKycStatus {
+    /// The campaign this record belongs to.
+    pub campaign_id: u64,
+    /// Address of the campaign creator.
+    pub creator: Address,
+    /// Whether the campaign creator has been KYC-verified.
+    pub kyc_status: VerificationStatus,
+    /// When `true`, every backer must hold a valid KYC approval before
+    /// their contribution is counted.
+    pub min_backer_kyc_required: bool,
+    /// Ledger timestamp when this record was first created.
+    pub created_at: u64,
+    /// Ledger timestamp when the campaign was KYC-verified (0 = not yet).
+    pub verified_at: u64,
+    /// Address of the reviewer who verified the campaign; `None` if not yet verified.
+    pub verified_by: Option<Address>,
+}
+
+/// Backer-level KYC status snapshot cached per (campaign, backer) pair.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BackerKycStatus {
+    /// The backer's address.
+    pub backer: Address,
+    /// The backer's most recent KYC verification status.
+    pub kyc_status: VerificationStatus,
+    /// Running count of campaigns this backer has contributed to (across all campaigns).
+    pub campaigns_backed: u64,
+    /// Cumulative amount contributed across all campaigns (informational).
+    pub total_backed_amount: i128,
+    /// Ledger timestamp of the last time this record was refreshed.
+    pub last_kyc_check: u64,
 }

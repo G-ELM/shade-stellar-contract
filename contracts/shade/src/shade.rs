@@ -9,6 +9,7 @@
     subscription as subscription_component, upgrade as upgrade_component,
     history as history_component, cross_chain_pledge as cross_chain_pledge_component,
     escrow as escrow_component,
+    kyc as kyc_component,
 };
 use crate::errors::ContractError;
 use crate::events;
@@ -26,6 +27,7 @@ use crate::types::{
     InvoiceFilter, Merchant, Nft, NftCollection, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
     OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
     TokenAnalytics, Transaction,
+    BackerKycStatus, CampaignKycStatus, KycRequest, VerificationStatus, VerificationType,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
 
@@ -1320,6 +1322,100 @@ impl ShadeTrait for Shade {
 
     fn get_top_donors(env: Env, campaign_id: u64) -> Vec<DonorInfo> {
         leaderboard_component::get_top_donors(&env, campaign_id)
+    }
+
+    // ── Campaign KYC & Verification System (#324) ─────────────────────────────
+
+    fn grant_kyc_reviewer(env: Env, admin: Address, reviewer: Address) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::grant_kyc_reviewer(&env, &admin, &reviewer);
+    }
+
+    fn revoke_kyc_reviewer(env: Env, admin: Address, reviewer: Address) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::revoke_kyc_reviewer(&env, &admin, &reviewer);
+    }
+
+    fn is_kyc_reviewer(env: Env, address: Address) -> bool {
+        kyc_component::is_kyc_reviewer(&env, &address)
+    }
+
+    fn submit_kyc_request(
+        env: Env,
+        subject: Address,
+        verification_type: VerificationType,
+        document_count: u32,
+        metadata: String,
+    ) -> u64 {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::submit_kyc_request(&env, &subject, verification_type, document_count, &metadata)
+    }
+
+    fn approve_kyc_request(env: Env, reviewer: Address, request_id: u64, expiration_days: u64) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::approve_kyc_request(&env, &reviewer, request_id, expiration_days);
+    }
+
+    fn reject_kyc_request(env: Env, reviewer: Address, request_id: u64, reason: String) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::reject_kyc_request(&env, &reviewer, request_id, &reason);
+    }
+
+    fn suspend_kyc(env: Env, admin: Address, subject: Address, reason: String) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::suspend_kyc(&env, &admin, &subject, &reason);
+    }
+
+    fn get_kyc_status(env: Env, subject: Address) -> VerificationStatus {
+        kyc_component::get_kyc_status(&env, &subject)
+    }
+
+    fn is_kyc_approved(env: Env, subject: Address) -> bool {
+        kyc_component::is_kyc_approved(&env, &subject)
+    }
+
+    fn get_kyc_request(env: Env, request_id: u64) -> KycRequest {
+        kyc_component::get_kyc_request(&env, request_id)
+    }
+
+    fn get_kyc_request_count(env: Env) -> u64 {
+        kyc_component::get_kyc_request_count(&env)
+    }
+
+    fn register_campaign_kyc(
+        env: Env,
+        creator: Address,
+        campaign_id: u64,
+        require_backer_kyc: bool,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::register_campaign_kyc(&env, &creator, campaign_id, require_backer_kyc);
+    }
+
+    fn verify_campaign_kyc(env: Env, reviewer: Address, campaign_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::verify_campaign_kyc(&env, &reviewer, campaign_id);
+    }
+
+    fn get_campaign_kyc_status(env: Env, campaign_id: u64) -> CampaignKycStatus {
+        kyc_component::get_campaign_kyc_status(&env, campaign_id)
+    }
+
+    fn is_campaign_kyc_verified(env: Env, campaign_id: u64) -> bool {
+        kyc_component::is_campaign_kyc_verified(&env, campaign_id)
+    }
+
+    fn verify_backer_for_campaign(env: Env, reviewer: Address, campaign_id: u64, backer: Address) {
+        pausable_component::assert_not_paused(&env);
+        kyc_component::verify_backer_for_campaign(&env, &reviewer, campaign_id, &backer);
+    }
+
+    fn is_backer_kyc_verified(env: Env, campaign_id: u64, backer: Address) -> bool {
+        kyc_component::is_backer_kyc_verified(&env, campaign_id, &backer)
+    }
+
+    fn get_backer_kyc_status(env: Env, campaign_id: u64, backer: Address) -> BackerKycStatus {
+        kyc_component::get_backer_kyc_status(&env, campaign_id, &backer)
     }
 }
 

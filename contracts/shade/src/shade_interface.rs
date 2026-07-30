@@ -1,8 +1,9 @@
 use crate::types::{
-    Campaign, CampaignAffiliate, CampaignParticipant, CrossChainBridgePayload, Event, Invoice,
-    InvoiceFilter, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
-    OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
-    TokenAnalytics, Transaction,
+    BackerKycStatus, Campaign, CampaignAffiliate, CampaignParticipant, CampaignKycStatus,
+    CrossChainBridgePayload, Event, Invoice, InvoiceFilter, KycRequest, Merchant,
+    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload,
+    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction,
+    VerificationStatus, VerificationType,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
 
@@ -227,4 +228,88 @@ pub trait ShadeTrait {
     fn get_campaign_participant(env: Env, campaign_id: u64, participant: Address) -> CampaignParticipant;
     fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate;
     fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)>;
+
+    // ── Campaign KYC & Verification System (#324) ─────────────────────────────
+
+    /// Grant the KYC reviewer role to `reviewer`. Admin-only.
+    fn grant_kyc_reviewer(env: Env, admin: Address, reviewer: Address);
+
+    /// Revoke the KYC reviewer role from `reviewer`. Admin-only.
+    fn revoke_kyc_reviewer(env: Env, admin: Address, reviewer: Address);
+
+    /// Return `true` if `address` is a registered KYC reviewer (or the admin).
+    fn is_kyc_reviewer(env: Env, address: Address) -> bool;
+
+    /// Submit a KYC verification request. The `subject` must call this themselves.
+    /// Returns the new request ID.
+    fn submit_kyc_request(
+        env: Env,
+        subject: Address,
+        verification_type: VerificationType,
+        document_count: u32,
+        metadata: String,
+    ) -> u64;
+
+    /// Approve a pending KYC request. Reviewer-only.
+    /// `expiration_days = 0` means the approval never expires.
+    fn approve_kyc_request(
+        env: Env,
+        reviewer: Address,
+        request_id: u64,
+        expiration_days: u64,
+    );
+
+    /// Reject a pending KYC request with a reason. Reviewer-only.
+    fn reject_kyc_request(
+        env: Env,
+        reviewer: Address,
+        request_id: u64,
+        reason: String,
+    );
+
+    /// Suspend a previously approved subject's KYC status. Admin-only.
+    fn suspend_kyc(env: Env, admin: Address, subject: Address, reason: String);
+
+    /// Return the current `VerificationStatus` for `subject`.
+    fn get_kyc_status(env: Env, subject: Address) -> VerificationStatus;
+
+    /// Return `true` iff `subject` holds a valid, non-expired KYC approval.
+    fn is_kyc_approved(env: Env, subject: Address) -> bool;
+
+    /// Fetch a KYC request by ID.
+    fn get_kyc_request(env: Env, request_id: u64) -> KycRequest;
+
+    /// Total number of KYC requests ever submitted.
+    fn get_kyc_request_count(env: Env) -> u64;
+
+    /// Register KYC configuration for a campaign. The `creator` must be KYC-approved.
+    fn register_campaign_kyc(
+        env: Env,
+        creator: Address,
+        campaign_id: u64,
+        require_backer_kyc: bool,
+    );
+
+    /// Verify (approve) a campaign's KYC configuration. Reviewer-only.
+    fn verify_campaign_kyc(env: Env, reviewer: Address, campaign_id: u64);
+
+    /// Fetch the KYC configuration record for a campaign.
+    fn get_campaign_kyc_status(env: Env, campaign_id: u64) -> CampaignKycStatus;
+
+    /// Return `true` iff the campaign has been KYC-verified.
+    fn is_campaign_kyc_verified(env: Env, campaign_id: u64) -> bool;
+
+    /// Record that `backer` is KYC-verified for a specific campaign. Reviewer-only.
+    fn verify_backer_for_campaign(
+        env: Env,
+        reviewer: Address,
+        campaign_id: u64,
+        backer: Address,
+    );
+
+    /// Return `true` if `backer` is verified for the given campaign.
+    fn is_backer_kyc_verified(env: Env, campaign_id: u64, backer: Address) -> bool;
+
+    /// Fetch the backer's KYC status record for a campaign.
+    fn get_backer_kyc_status(env: Env, campaign_id: u64, backer: Address) -> BackerKycStatus;
 }

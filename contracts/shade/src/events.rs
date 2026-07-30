@@ -1886,3 +1886,231 @@ pub fn publish_escrow_expired_refund_event(
     }
     .publish(env);
 }
+
+// ── Campaign KYC & Verification events (#324) ─────────────────────────────────
+
+/// Emitted when a new KYC request is submitted by a subject.
+#[contractevent]
+pub struct KycRequestSubmittedEvent {
+    pub request_id: u64,
+    pub subject: Address,
+    pub verification_type: u32,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_request_submitted_event(
+    env: &Env,
+    request_id: u64,
+    subject: Address,
+    verification_type: crate::types::VerificationType,
+    timestamp: u64,
+) {
+    KycRequestSubmittedEvent {
+        request_id,
+        subject,
+        verification_type: verification_type as u32,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a reviewer approves a KYC request.
+#[contractevent]
+pub struct KycRequestApprovedEvent {
+    pub request_id: u64,
+    pub subject: Address,
+    pub reviewer: Address,
+    /// Unix timestamp when the approval expires; 0 = no expiry.
+    pub expiration: u64,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_request_approved_event(
+    env: &Env,
+    request_id: u64,
+    subject: Address,
+    reviewer: Address,
+    expiration: u64,
+    timestamp: u64,
+) {
+    KycRequestApprovedEvent {
+        request_id,
+        subject,
+        reviewer,
+        expiration,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a reviewer rejects a KYC request.
+#[contractevent]
+pub struct KycRequestRejectedEvent {
+    pub request_id: u64,
+    pub subject: Address,
+    pub reviewer: Address,
+    pub reason: String,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_request_rejected_event(
+    env: &Env,
+    request_id: u64,
+    subject: Address,
+    reviewer: Address,
+    reason: String,
+    timestamp: u64,
+) {
+    KycRequestRejectedEvent {
+        request_id,
+        subject,
+        reviewer,
+        reason,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when an admin suspends a subject's KYC approval.
+#[contractevent]
+pub struct KycSuspendedEvent {
+    pub subject: Address,
+    pub admin: Address,
+    pub reason: String,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_suspended_event(
+    env: &Env,
+    subject: Address,
+    admin: Address,
+    reason: String,
+    timestamp: u64,
+) {
+    KycSuspendedEvent {
+        subject,
+        admin,
+        reason,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a campaign's KYC configuration is first registered.
+#[contractevent]
+pub struct CampaignKycRegisteredEvent {
+    pub campaign_id: u64,
+    pub creator: Address,
+    pub require_backer_kyc: bool,
+    pub timestamp: u64,
+}
+
+pub fn publish_campaign_kyc_registered_event(
+    env: &Env,
+    campaign_id: u64,
+    creator: Address,
+    require_backer_kyc: bool,
+    timestamp: u64,
+) {
+    CampaignKycRegisteredEvent {
+        campaign_id,
+        creator,
+        require_backer_kyc,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a reviewer marks a campaign as KYC-verified.
+#[contractevent]
+pub struct CampaignKycVerifiedEvent {
+    pub campaign_id: u64,
+    pub creator: Address,
+    pub reviewer: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_campaign_kyc_verified_event(
+    env: &Env,
+    campaign_id: u64,
+    creator: Address,
+    reviewer: Address,
+    timestamp: u64,
+) {
+    CampaignKycVerifiedEvent {
+        campaign_id,
+        creator,
+        reviewer,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when the admin grants the KYC reviewer role to an address.
+#[contractevent]
+pub struct KycReviewerGrantedEvent {
+    pub admin: Address,
+    pub reviewer: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_reviewer_granted_event(
+    env: &Env,
+    admin: Address,
+    reviewer: Address,
+    timestamp: u64,
+) {
+    KycReviewerGrantedEvent {
+        admin,
+        reviewer,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when the admin revokes the KYC reviewer role from an address.
+#[contractevent]
+pub struct KycReviewerRevokedEvent {
+    pub admin: Address,
+    pub reviewer: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_kyc_reviewer_revoked_event(
+    env: &Env,
+    admin: Address,
+    reviewer: Address,
+    timestamp: u64,
+) {
+    KycReviewerRevokedEvent {
+        admin,
+        reviewer,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a reviewer verifies a backer's KYC for a specific campaign.
+#[contractevent]
+pub struct BackerKycVerifiedEvent {
+    pub campaign_id: u64,
+    pub backer: Address,
+    pub reviewer: Address,
+    pub timestamp: u64,
+}
+
+pub fn publish_backer_kyc_verified_event(
+    env: &Env,
+    campaign_id: u64,
+    backer: Address,
+    reviewer: Address,
+    timestamp: u64,
+) {
+    BackerKycVerifiedEvent {
+        campaign_id,
+        backer,
+        reviewer,
+        timestamp,
+    }
+    .publish(env);
+}
