@@ -1,32 +1,27 @@
-﻿use crate::components::{
-    campaign_royalties as campaign_royalties_component,
-    nft as nft_component,
-    access_control as access_control_component, admin as admin_component, core as core_component,
-    invoice as invoice_component, merchant as merchant_component,
-    multisig_withdrawal as multisig_component, pausable as pausable_component,
-    search as search_component, subscription as subscription_component,
-    upgrade as upgrade_component, history as history_component,
-    invoice as invoice_component, merchant as merchant_component, pausable as pausable_component,
-    subscription as subscription_component, upgrade as upgrade_component,
-    history as history_component, cross_chain_pledge as cross_chain_pledge_component,
-    escrow as escrow_component,
+use crate::components::{
+    access_control as access_control_component, admin as admin_component,
+    auto_withdrawal as auto_withdrawal_component, bridge as bridge_component,
+    campaign as campaign_component, campaigns as campaigns_component, core as core_component,
+    escrow as escrow_component, governance as governance_component, history as history_component,
+    invoice as invoice_component, leaderboard as leaderboard_component,
+    merchant as merchant_component, multisig_withdrawal as multisig_component,
+    nft as nft_component, pausable as pausable_component, platform_fee as platform_fee_component,
+    pledge as pledge_component, search as search_component,
+    stretch_goals as stretch_goals_component, subscription as subscription_component,
+    upgrade as upgrade_component,
 };
-use crate::errors::ContractError;
+use crate::errors::{ContractError, MultiSigError};
 use crate::events;
 use crate::shade_interface::ShadeTrait;
 use crate::types::{
-    ContractInfo, CrossChainBridgePayload, DataKey, Event, EventFilter, Invoice, InvoiceFilter,
-    InvoicePage, Merchant, MerchantFilter, MerchantPage, MerchantAnalytics,
-    MerchantAnalyticsSummary, OracleConfig, PaymentPayload, PendingFee, Role, Subscription,
-    SubscriptionFilter, SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics,
-    Transaction, WithdrawalProposal, WithdrawalProposalFilter,
-    ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice, InvoiceFilter, Merchant,
-    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, OracleConfig, PaymentPayload,
-    PendingFee, Role, Subscription, SubscriptionPlan, Ticket, TokenAnalytics, Transaction, Escrow,
-    BackerCampaign, BackerRewardTier, ContractInfo, CrossChainBridgePayload, DataKey, Event, Invoice,
-    InvoiceFilter, Merchant, Nft, NftCollection, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
-    OracleConfig, PaymentPayload, PendingFee, Role, Subscription, SubscriptionPlan, Ticket,
-    TokenAnalytics, Transaction,
+    BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
+    CampaignFilter, CampaignParticipant, CampaignTag, ContractInfo, CrossChainBridgePayload,
+    DataKey, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice, InvoiceFilter,
+    InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter,
+    MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit, Pledge,
+    PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
+    SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
+    WithdrawalProposal, WithdrawalProposalFilter,
 };
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, Option, String, Vec};
 
@@ -343,19 +338,9 @@ impl ShadeTrait for Shade {
         platform_fee_component::get_merchant_platform_fee(&env, merchant_id, &token)
     }
 
-    fn clear_merchant_platform_fee(
-        env: Env,
-        caller: Address,
-        merchant_id: u64,
-        token: Address,
-    ) {
+    fn clear_merchant_platform_fee(env: Env, caller: Address, merchant_id: u64, token: Address) {
         pausable_component::assert_not_paused(&env);
-        platform_fee_component::clear_merchant_platform_fee(
-            &env,
-            &caller,
-            merchant_id,
-            &token,
-        );
+        platform_fee_component::clear_merchant_platform_fee(&env, &caller, merchant_id, &token);
     }
 
     fn get_merchant_volume(env: Env, merchant: Address, token: Address) -> i128 {
@@ -396,11 +381,6 @@ impl ShadeTrait for Shade {
 
     fn get_auto_withdrawal_recipient(env: Env, merchant_id: u64) -> Option<Address> {
         auto_withdrawal_component::get_auto_withdrawal_recipient(&env, merchant_id)
-    }
-
-    fn claim_refund(env: Env, buyer: Address, invoice_id: u64) {
-        pausable_component::assert_not_paused(&env);
-        invoice_component::claim_refund(&env, &buyer, invoice_id);
     }
 
     fn pay_invoice(env: Env, payer: Address, invoice_id: u64) {
@@ -753,7 +733,7 @@ impl ShadeTrait for Shade {
     }
 
     fn get_token_market_share(env: Env, token: Address) -> i128 {
-        admin_component::get_token_market_share(&env, token)
+        admin_component::get_token_market_share(&env, &token)
     }
 
     fn create_escrow(
@@ -798,7 +778,14 @@ impl ShadeTrait for Shade {
         royalty_bps: u32,
     ) -> u64 {
         pausable_component::assert_not_paused(&env);
-        nft_component::create_nft_collection(&env, &merchant, &name, &base_uri, max_supply, royalty_bps)
+        nft_component::create_nft_collection(
+            &env,
+            &merchant,
+            &name,
+            &base_uri,
+            max_supply,
+            royalty_bps,
+        )
     }
 
     fn mint_nft(
@@ -883,7 +870,10 @@ impl ShadeTrait for Shade {
     ) {
         pausable_component::assert_not_paused(&env);
         crate::components::backer_rewards::set_backer_reward_tiers(
-            &env, merchant, campaign_id, tiers,
+            &env,
+            merchant,
+            campaign_id,
+            tiers,
         );
     }
 
@@ -900,15 +890,13 @@ impl ShadeTrait for Shade {
         crate::components::backer_rewards::get_backer_pledge(&env, campaign_id, backer)
     }
 
-    fn select_backer_reward_tier(
-        env: Env,
-        backer: Address,
-        campaign_id: u64,
-        tier_index: u32,
-    ) {
+    fn select_backer_reward_tier(env: Env, backer: Address, campaign_id: u64, tier_index: u32) {
         pausable_component::assert_not_paused(&env);
         crate::components::backer_rewards::select_backer_reward_tier(
-            &env, backer, campaign_id, tier_index,
+            &env,
+            backer,
+            campaign_id,
+            tier_index,
         );
     }
 
@@ -916,15 +904,13 @@ impl ShadeTrait for Shade {
         crate::components::backer_rewards::get_backer_selected_tier(&env, campaign_id, backer)
     }
 
-    fn fulfill_backer_reward(
-        env: Env,
-        merchant: Address,
-        campaign_id: u64,
-        backer: Address,
-    ) {
+    fn fulfill_backer_reward(env: Env, merchant: Address, campaign_id: u64, backer: Address) {
         pausable_component::assert_not_paused(&env);
         crate::components::backer_rewards::fulfill_backer_reward(
-            &env, merchant, campaign_id, backer,
+            &env,
+            merchant,
+            campaign_id,
+            backer,
         );
     }
 
@@ -944,7 +930,10 @@ impl ShadeTrait for Shade {
         perk_index: u32,
     ) -> bool {
         crate::components::backer_rewards::is_backer_perk_claimed(
-            &env, campaign_id, backer, perk_index,
+            &env,
+            campaign_id,
+            backer,
+            perk_index,
         )
     }
 
@@ -957,7 +946,7 @@ impl ShadeTrait for Shade {
 
     fn get_multisig_threshold(env: Env, token: Address) -> i128 {
         multisig_component::get_multisig_threshold(&env, &token)
-            .unwrap_or_else(|| panic_with_error!(&env, ContractError::ThresholdNotSet))
+            .unwrap_or_else(|| panic_with_error!(&env, MultiSigError::ThresholdNotSet))
     }
 
     fn configure_multisig(env: Env, admin: Address, signers: Vec<Address>, quorum: u32) {
@@ -1050,7 +1039,7 @@ impl ShadeTrait for Shade {
 
     // ── Pledge / crowdfund campaign system ────────────────────────────────────
 
-    fn create_campaign(
+    fn create_pledge_campaign(
         env: Env,
         merchant: Address,
         title: String,
@@ -1062,7 +1051,7 @@ impl ShadeTrait for Shade {
         pledge_component::create_campaign(&env, &merchant, &title, goal, &token, deadline)
     }
 
-    fn get_campaign(env: Env, campaign_id: u64) -> Campaign {
+    fn get_pledge_campaign(env: Env, campaign_id: u64) -> PledgeCampaign {
         pledge_component::get_campaign(&env, campaign_id)
     }
 
@@ -1082,12 +1071,12 @@ impl ShadeTrait for Shade {
         pledge_component::execute_campaign(&env, &merchant, campaign_id);
     }
 
-    fn cancel_campaign(env: Env, merchant: Address, campaign_id: u64) {
+    fn cancel_pledge_campaign(env: Env, merchant: Address, campaign_id: u64) {
         pausable_component::assert_not_paused(&env);
         pledge_component::cancel_campaign(&env, &merchant, campaign_id);
     }
 
-    fn claim_refund(env: Env, contributor: Address, campaign_id: u64) {
+    fn claim_pledge_refund(env: Env, contributor: Address, campaign_id: u64) {
         pausable_component::assert_not_paused(&env);
         pledge_component::claim_refund(&env, &contributor, campaign_id);
     }
@@ -1109,77 +1098,11 @@ impl ShadeTrait for Shade {
         pledge_component::get_contributor_pledges(&env, &contributor)
     }
 
-    // ── Campaign announcements (Issue #335) ───────────────────────────────────
-
-    fn create_campaign(
-        env: Env,
-        merchant: Address,
-        title: String,
-        description: String,
-        goal_amount: i128,
-        token: Address,
-        end_date: u64,
-    ) -> u64 {
-        pausable_component::assert_not_paused(&env);
-        campaign_component::create_campaign(
+    fn get_merchant_campaigns(env: Env, merchant: Address) -> Vec<Campaign> {
+        campaigns_component::get_merchant_campaigns(
             &env,
-            &merchant,
-            &title,
-            &description,
-            goal_amount,
-            &token,
-            end_date,
+            merchant_component::get_merchant_id(&env, &merchant),
         )
-    }
-
-    fn get_campaign(env: Env, campaign_id: u64) -> Campaign {
-        campaign_component::get_campaign(&env, campaign_id)
-    }
-
-    fn get_merchant_campaigns(env: Env, merchant: Address) -> Vec<u64> {
-        campaign_component::get_merchant_campaigns(&env, &merchant)
-    }
-
-    fn update_campaign(
-        env: Env,
-        merchant: Address,
-        campaign_id: u64,
-        title: String,
-        description: String,
-        end_date: u64,
-    ) {
-        pausable_component::assert_not_paused(&env);
-        campaign_component::update_campaign(&env, &merchant, campaign_id, &title, &description, end_date);
-    }
-
-    fn cancel_campaign(env: Env, caller: Address, campaign_id: u64) {
-        pausable_component::assert_not_paused(&env);
-        campaign_component::cancel_campaign(&env, &caller, campaign_id);
-    }
-
-    fn end_campaign(env: Env, merchant: Address, campaign_id: u64) {
-        pausable_component::assert_not_paused(&env);
-        campaign_component::end_campaign(&env, &merchant, campaign_id);
-    }
-
-    fn post_campaign_announcement(
-        env: Env,
-        merchant: Address,
-        campaign_id: u64,
-        title: String,
-        content: String,
-    ) -> u64 {
-        pausable_component::assert_not_paused(&env);
-        campaign_component::post_campaign_announcement(&env, &merchant, campaign_id, &title, &content)
-    }
-
-    fn get_campaign_announcements(env: Env, campaign_id: u64) -> Vec<CampaignAnnouncement> {
-        campaign_component::get_campaign_announcements(&env, campaign_id)
-    }
-
-    fn claim_refund(env: Env, buyer: Address, invoice_id: u64) {
-        pausable_component::assert_not_paused(&env);
-        invoice_component::claim_refund(&env, &buyer, invoice_id);
     }
 
     // ── Campaign categories & tagging (#352) ──────────────────────────────
@@ -1203,14 +1126,7 @@ impl ShadeTrait for Shade {
         active: Option<bool>,
     ) {
         pausable_component::assert_not_paused(&env);
-        campaigns_component::update_category(
-            &env,
-            &admin,
-            category_id,
-            name,
-            description,
-            active,
-        );
+        campaigns_component::update_category(&env, &admin, category_id, name, description, active);
     }
 
     fn get_campaign_category(env: Env, category_id: u64) -> CampaignCategory {
@@ -1309,13 +1225,7 @@ impl ShadeTrait for Shade {
         leaderboard_component::init_campaign(&env, merchant, campaign_id);
     }
 
-    fn track_donation(
-        env: Env,
-        merchant: Address,
-        campaign_id: u64,
-        donor: Address,
-        amount: i128,
-    ) {
+    fn track_donation(env: Env, merchant: Address, campaign_id: u64, donor: Address, amount: i128) {
         leaderboard_component::track_donation(&env, merchant, campaign_id, donor, amount);
     }
 
@@ -1323,74 +1233,210 @@ impl ShadeTrait for Shade {
         leaderboard_component::get_top_donors(&env, campaign_id)
     }
 
-    fn set_campaign_royalty(
+    // ── Stretch goals ─────────────────────────────────────────────────────────
+
+    /// Defines a funding milestone beyond a campaign's base goal.
+    /// Only the campaign's owning merchant may call this.
+    fn create_stretch_goal(
         env: Env,
         merchant: Address,
         campaign_id: u64,
-        royalty_bps: u32,
-        recipient: Option<Address>,
+        target_amount: i128,
+        description: String,
+        reward_description: String,
+    ) -> u64 {
+        pausable_component::assert_not_paused(&env);
+        stretch_goals_component::create_stretch_goal(
+            &env,
+            merchant,
+            campaign_id,
+            target_amount,
+            description,
+            reward_description,
+        )
+    }
+
+    /// Unlocks a goal whose campaign has reached its target. The raised amount
+    /// is read from the campaign, not supplied by the caller.
+    fn unlock_stretch_goal(env: Env, merchant: Address, goal_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        stretch_goals_component::unlock_stretch_goal(&env, merchant, goal_id);
+    }
+
+    /// Retires a goal that has not been unlocked yet.
+    fn cancel_stretch_goal(env: Env, merchant: Address, goal_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        stretch_goals_component::cancel_stretch_goal(&env, merchant, goal_id);
+    }
+
+    /// Grants a reward to one backer for an unlocked goal.
+    fn grant_stretch_goal_reward(
+        env: Env,
+        merchant: Address,
+        goal_id: u64,
+        backer: Address,
+        reward_amount: i128,
     ) {
         pausable_component::assert_not_paused(&env);
-        campaign_royalties_component::set_campaign_royalty(
+        stretch_goals_component::grant_stretch_goal_reward(
             &env,
-            &merchant,
-            campaign_id,
-            royalty_bps,
-            recipient,
+            merchant,
+            goal_id,
+            backer,
+            reward_amount,
         );
     }
 
-    fn get_campaign_royalty_config(
-        env: Env,
-        campaign_id: u64,
-    ) -> Option<crate::types::CampaignRoyaltyConfig> {
-        campaign_royalties_component::get_campaign_royalty_config(&env, campaign_id)
+    /// Marks the caller's reward for a goal as claimed.
+    fn claim_stretch_goal_reward(env: Env, backer: Address, goal_id: u64) {
+        pausable_component::assert_not_paused(&env);
+        stretch_goals_component::claim_stretch_goal_reward(&env, backer, goal_id);
     }
 
-    fn execute_campaign_secondary_sale(
+    fn get_stretch_goal(env: Env, goal_id: u64) -> StretchGoal {
+        stretch_goals_component::get_stretch_goal(&env, goal_id)
+    }
+
+    fn get_campaign_stretch_goals(env: Env, campaign_id: u64) -> Vec<u64> {
+        stretch_goals_component::get_campaign_stretch_goals(&env, campaign_id)
+    }
+
+    fn get_campaign_stretch_goal_data(env: Env, campaign_id: u64) -> Vec<StretchGoal> {
+        stretch_goals_component::get_campaign_stretch_goal_data(&env, campaign_id)
+    }
+
+    /// The campaign's next un-unlocked milestone, if any.
+    fn get_next_stretch_goal(env: Env, campaign_id: u64) -> Option<StretchGoal> {
+        stretch_goals_component::get_next_stretch_goal(&env, campaign_id)
+    }
+
+    fn get_stretch_goal_reward(
         env: Env,
-        seller: Address,
-        buyer: Address,
-        campaign_id: u64,
-        token: Address,
-        gross_amount: i128,
+        goal_id: u64,
+        backer: Address,
+    ) -> Option<StretchGoalReward> {
+        stretch_goals_component::get_stretch_goal_reward(&env, goal_id, backer)
+    }
+
+    // ── Fee-policy / staking / affiliate campaigns ────────────────────────────
+    //
+    // Distinct from the category/tag campaigns above: these carry a fee-waiver
+    // and discount policy plus participant staking and affiliate commissions.
+
+    fn create_fee_campaign(
+        env: Env,
+        caller: Address,
+        name: String,
+        charity: bool,
+        fee_waiver_bps: u32,
+        discount_bps: u32,
+        stake_required: i128,
     ) -> u64 {
         pausable_component::assert_not_paused(&env);
-        campaign_royalties_component::execute_secondary_sale(
+        campaign_component::create_campaign(
             &env,
-            &seller,
-            &buyer,
-            campaign_id,
-            &token,
-            gross_amount,
+            &caller,
+            &name,
+            charity,
+            fee_waiver_bps,
+            discount_bps,
+            stake_required,
         )
     }
 
-    fn get_campaign_secondary_sale(
+    fn get_fee_campaign(env: Env, campaign_id: u64) -> FeeCampaign {
+        campaign_component::get_campaign(&env, campaign_id)
+    }
+
+    fn configure_campaign_fee_policy(
         env: Env,
-        sale_id: u64,
-    ) -> crate::types::CampaignSecondarySale {
-        campaign_royalties_component::get_campaign_secondary_sale(&env, sale_id)
+        caller: Address,
+        campaign_id: u64,
+        fee_waiver_bps: u32,
+        discount_bps: u32,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::configure_campaign_fee_policy(
+            &env,
+            &caller,
+            campaign_id,
+            fee_waiver_bps,
+            discount_bps,
+        );
     }
 
-    fn get_campaign_sale_count(env: Env) -> u64 {
-        campaign_royalties_component::get_campaign_secondary_sale_count(&env)
+    fn calculate_campaign_discount(env: Env, campaign_id: u64, amount: i128) -> i128 {
+        campaign_component::calculate_campaign_discount(&env, campaign_id, amount)
     }
 
-    fn get_campaign_royalty_earnings(env: Env, campaign_id: u64) -> i128 {
-        campaign_royalties_component::get_campaign_royalty_earnings(&env, campaign_id)
+    fn record_fee_campaign_contribution(env: Env, caller: Address, campaign_id: u64, amount: i128) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::record_campaign_contribution(&env, &caller, campaign_id, amount);
     }
 
-    fn get_campaign_token_royalties(
+    fn stake_campaign(env: Env, caller: Address, campaign_id: u64, amount: i128) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::stake_campaign(&env, &caller, campaign_id, amount);
+    }
+
+    fn slash_campaign_stake(
+        env: Env,
+        caller: Address,
+        campaign_id: u64,
+        participant: Address,
+        amount: i128,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::slash_campaign_stake(&env, &caller, campaign_id, &participant, amount);
+    }
+
+    fn register_affiliate(
+        env: Env,
+        caller: Address,
+        campaign_id: u64,
+        affiliate: Address,
+        commission_bps: u32,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::register_affiliate(
+            &env,
+            &caller,
+            campaign_id,
+            &affiliate,
+            commission_bps,
+        );
+    }
+
+    fn pay_affiliate_commission(
+        env: Env,
+        caller: Address,
+        campaign_id: u64,
+        affiliate: Address,
+        amount: i128,
+    ) {
+        pausable_component::assert_not_paused(&env);
+        campaign_component::pay_affiliate_commission(
+            &env,
+            &caller,
+            campaign_id,
+            &affiliate,
+            amount,
+        );
+    }
+
+    fn get_campaign_participant(
         env: Env,
         campaign_id: u64,
-        token: Address,
-    ) -> i128 {
-        campaign_royalties_component::get_campaign_royalty_earnings_for_token(
-            &env,
-            campaign_id,
-            &token,
-        )
+        participant: Address,
+    ) -> CampaignParticipant {
+        campaign_component::get_campaign_participant(&env, campaign_id, &participant)
+    }
+
+    fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate {
+        campaign_component::get_campaign_affiliate(&env, campaign_id, &affiliate)
+    }
+
+    fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)> {
+        campaign_component::get_campaign_leaderboard(&env, campaign_id, limit)
     }
 }
-
