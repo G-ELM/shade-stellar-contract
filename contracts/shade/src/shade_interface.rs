@@ -6,13 +6,13 @@
 
 use crate::types::{
     BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFilter, CampaignParticipant, CampaignTag, CrossChainBridgePayload, DonorInfo, Escrow,
-    Event, EventFilter, FeeCampaign, Invoice, InvoiceFilter, InvoicePage, Merchant,
-    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft, NftCollection,
-    OracleConfig, PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role, StretchGoal,
-    StretchGoalReward, Subscription, SubscriptionFilter, SubscriptionPlan, SubscriptionPlanFilter,
-    Ticket, TokenAnalytics, Transaction, UpgradeProposal, WithdrawalProposal,
-    WithdrawalProposalFilter,
+    CampaignFilter, CampaignParticipant, CampaignTag, CreatorVesting, CrossChainBridgePayload,
+    DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice, InvoiceFilter, InvoicePage,
+    Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft,
+    NftCollection, OracleConfig, PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role,
+    StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter, SubscriptionPlan,
+    SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
+    WithdrawalProposal, WithdrawalProposalFilter,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, Option, String, Vec};
 
@@ -487,31 +487,32 @@ pub trait ShadeTrait {
     fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate;
     fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)>;
 
-    fn set_campaign_royalty(
+    // ── Creator fund vesting ──────────────────────────────────────────────────
+
+    /// Commits a backer campaign's raised funds to a cliff-plus-linear vesting
+    /// schedule paying out to its creator. Owning merchant only; the terms are
+    /// fixed once published.
+    fn create_creator_vesting(
         env: Env,
-        merchant: Address,
+        creator: Address,
         campaign_id: u64,
-        royalty_bps: u32,
-        recipient: Option<Address>,
+        total_amount: i128,
+        start_time: u64,
+        cliff_duration: u64,
+        vesting_duration: u64,
+        initial_unlock_bps: u32,
     );
-    fn get_campaign_royalty_config(
-        env: Env,
-        campaign_id: u64,
-    ) -> Option<CampaignRoyaltyConfig>;
-    fn execute_campaign_secondary_sale(
-        env: Env,
-        seller: Address,
-        buyer: Address,
-        campaign_id: u64,
-        token: Address,
-        gross_amount: i128,
-    ) -> u64;
-    fn get_campaign_secondary_sale(env: Env, sale_id: u64) -> CampaignSecondarySale;
-    fn get_campaign_sale_count(env: Env) -> u64;
-    fn get_campaign_royalty_earnings(env: Env, campaign_id: u64) -> i128;
-    fn get_campaign_token_royalties(
-        env: Env,
-        campaign_id: u64,
-        token: Address,
-    ) -> i128;
+    /// Pays the creator everything vested since their last release, returning
+    /// the amount transferred.
+    fn release_creator_vesting(env: Env, creator: Address, campaign_id: u64) -> i128;
+    /// Freezes a schedule so nothing further vests. Admin only; the
+    /// already-vested balance stays claimable by the creator.
+    fn revoke_creator_vesting(env: Env, admin: Address, campaign_id: u64);
+    fn get_creator_vesting(env: Env, campaign_id: u64) -> CreatorVesting;
+    /// Amount vested as of now, released or not.
+    fn get_vested_amount(env: Env, campaign_id: u64) -> i128;
+    /// Amount the creator could release right now.
+    fn get_releasable_amount(env: Env, campaign_id: u64) -> i128;
+    /// Campaign IDs this creator vests funds from, in creation order.
+    fn get_creator_vesting_campaigns(env: Env, creator: Address) -> Vec<u64>;
 }

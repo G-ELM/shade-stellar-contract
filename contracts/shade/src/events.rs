@@ -3259,6 +3259,149 @@ pub fn publish_vesting_timeline_updated_event(
     .publish(env);
 }
 
+// ── Creator fund vesting ──────────────────────────────────────────────────────
+//
+// Every event carries the campaign_id, the creator and the running totals, so an
+// indexer can reconstruct a schedule's full payout state — how much has vested,
+// been paid and remains — from the event stream alone, with no contract reads.
+// Absolute timestamps are emitted alongside the durations they derive from so a
+// UI can render the unlock calendar without redoing the arithmetic.
+
+/// Emitted when a campaign creator commits raised funds to a vesting schedule.
+#[contractevent]
+pub struct CreatorVestingCreatedEvent {
+    pub campaign_id: u64,
+    /// Beneficiary of the schedule; the campaign's owning merchant.
+    pub creator: Address,
+    pub token: Address,
+    pub total_amount: i128,
+    pub start_time: u64,
+    /// Absolute timestamp of the cliff: `start_time + cliff_duration`.
+    pub cliff_timestamp: u64,
+    /// Absolute timestamp of full vesting: `start_time + vesting_duration`.
+    pub end_timestamp: u64,
+    pub initial_unlock_bps: u32,
+    /// Tokens the cliff releases in one lump; the rest vests linearly after it.
+    pub initial_unlock_amount: i128,
+    /// The campaign's raise at creation time, for context on the commitment.
+    pub campaign_raised: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_creator_vesting_created_event(
+    env: &Env,
+    campaign_id: u64,
+    creator: Address,
+    token: Address,
+    total_amount: i128,
+    start_time: u64,
+    cliff_timestamp: u64,
+    end_timestamp: u64,
+    initial_unlock_bps: u32,
+    initial_unlock_amount: i128,
+    campaign_raised: i128,
+    timestamp: u64,
+) {
+    CreatorVestingCreatedEvent {
+        campaign_id,
+        creator,
+        token,
+        total_amount,
+        start_time,
+        cliff_timestamp,
+        end_timestamp,
+        initial_unlock_bps,
+        initial_unlock_amount,
+        campaign_raised,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted on every payout from a creator's vesting schedule.
+#[contractevent]
+pub struct CreatorVestingReleasedEvent {
+    pub campaign_id: u64,
+    pub creator: Address,
+    pub token: Address,
+    /// Amount transferred by this release.
+    pub amount: i128,
+    /// Cumulative amount released across every payout so far.
+    pub total_released: i128,
+    /// Committed total that has vested as of this release.
+    pub vested_to_date: i128,
+    /// Still to be paid out: `total_amount - total_released`.
+    pub remaining_amount: i128,
+    /// True when this release drained the schedule.
+    pub completed: bool,
+    pub timestamp: u64,
+}
+
+pub fn publish_creator_vesting_released_event(
+    env: &Env,
+    campaign_id: u64,
+    creator: Address,
+    token: Address,
+    amount: i128,
+    total_released: i128,
+    vested_to_date: i128,
+    remaining_amount: i128,
+    completed: bool,
+    timestamp: u64,
+) {
+    CreatorVestingReleasedEvent {
+        campaign_id,
+        creator,
+        token,
+        amount,
+        total_released,
+        vested_to_date,
+        remaining_amount,
+        completed,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when the admin freezes a schedule. The vested-but-unreleased balance
+/// stays claimable by the creator; `forfeited_amount` never vests.
+#[contractevent]
+pub struct CreatorVestingRevokedEvent {
+    pub campaign_id: u64,
+    pub creator: Address,
+    /// Contract admin that revoked the schedule.
+    pub admin: Address,
+    /// Amount that had vested at revocation; the schedule's new total.
+    pub vested_amount: i128,
+    /// Vested but not yet paid out; the creator may still claim this.
+    pub unreleased_amount: i128,
+    /// Amount that will now never vest.
+    pub forfeited_amount: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_creator_vesting_revoked_event(
+    env: &Env,
+    campaign_id: u64,
+    creator: Address,
+    admin: Address,
+    vested_amount: i128,
+    unreleased_amount: i128,
+    forfeited_amount: i128,
+    timestamp: u64,
+) {
+    CreatorVestingRevokedEvent {
+        campaign_id,
+        creator,
+        admin,
+        vested_amount,
+        unreleased_amount,
+        forfeited_amount,
+        timestamp,
+    }
+    .publish(env);
+}
+
 #[contractevent]
 pub struct WithdrawalCancelledEvent {
     pub proposal_id: u64,

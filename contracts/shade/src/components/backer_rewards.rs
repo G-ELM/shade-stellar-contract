@@ -135,6 +135,20 @@ pub fn get_backer_campaign(env: &Env, campaign_id: u64) -> BackerCampaign {
     get_campaign(env, campaign_id)
 }
 
+/// Asserts `merchant` owns `campaign_id` and returns the campaign.
+///
+/// Shared with the vesting component, which pays a campaign's raised funds out
+/// to the creator that owns it.
+pub fn assert_backer_campaign_owner(
+    env: &Env,
+    campaign_id: u64,
+    merchant: &Address,
+) -> BackerCampaign {
+    let campaign = get_campaign(env, campaign_id);
+    assert_campaign_merchant(env, &campaign, merchant);
+    campaign
+}
+
 pub fn set_backer_reward_tiers(
     env: &Env,
     merchant_addr: Address,

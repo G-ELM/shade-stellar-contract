@@ -193,6 +193,23 @@ pub enum StretchKey {
     CampaignStretchGoals(u64),
 }
 
+/// Creator fund-vesting storage keys.
+///
+/// A dedicated enum, like [`StretchKey`], so this feature adds no cases to
+/// [`CampaignKey`] (Soroban caps every enum at 50 cases).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum VestingKey {
+    /// The single vesting schedule attached to a backer campaign, keyed by
+    /// `campaign_id`. Keying on the campaign avoids a separate ID counter and
+    /// its extra storage entry, and makes "does this campaign vest?" a single
+    /// read.
+    CreatorVesting(u64),
+    /// Reverse index: creator address -> the campaign IDs they vest funds from.
+    /// Holds only `u64` IDs rather than whole records, keeping the entry small.
+    CreatorVestingList(Address),
+}
+
 /// NFT reward storage keys.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -950,6 +967,57 @@ pub struct CrowdfundVestingConfig {
     pub timeline_id: u64,
     pub total_vesting_amount: i128,
     pub configured_at: u64,
+}
+
+// ── Creator fund vesting ──────────────────────────────────────────────────────
+
+/// Lifecycle of a campaign creator's vesting schedule.
+#[contracttype]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum CreatorVestingStatus {
+    /// Funds are vesting; the creator may release whatever has vested.
+    Active = 0,
+    /// Every vested token has been released; the schedule is finished.
+    Completed = 1,
+    /// The admin froze the schedule. Whatever had vested at that moment stays
+    /// claimable; nothing further will ever vest.
+    Revoked = 2,
+}
+
+/// A campaign creator's claim on the funds their campaign raised, released
+/// gradually rather than all at once.
+///
+/// `creator` and `token` are denormalized from the campaign record so a release
+/// needs one storage read instead of three (campaign -> merchant id ->
+/// merchant). The extra 2 fields cost far less rent than the reads cost CPU on
+/// every claim.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CreatorVesting {
+    pub campaign_id: u64,
+    /// Beneficiary; the merchant that owns the campaign.
+    pub creator: Address,
+    /// Token the campaign raised in, and that releases pay out in.
+    pub token: Address,
+    /// Total committed to the schedule. On revocation this is lowered to the
+    /// amount that had vested at that instant, freezing the remainder.
+    pub total_amount: i128,
+    /// Cumulative amount already paid out. Never exceeds `total_amount`.
+    pub released_amount: i128,
+    /// Ledger timestamp the schedule is measured from.
+    pub start_time: u64,
+    /// Seconds after `start_time` before anything unlocks.
+    pub cliff_duration: u64,
+    /// Total seconds from `start_time` until fully vested.
+    pub vesting_duration: u64,
+    /// Share released in one lump at the cliff, in basis points (10_000 = 100%).
+    /// The remainder vests linearly from the cliff to the end.
+    pub initial_unlock_bps: u32,
+    pub status: CreatorVestingStatus,
+    pub created_at: u64,
+    /// Timestamp of the most recent release; `0` if none yet.
+    pub last_release_at: u64,
 }
 
 // ── Dynamic hard-cap voting ───────────────────────────────────────────────────
