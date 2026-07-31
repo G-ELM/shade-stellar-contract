@@ -23,7 +23,7 @@ use crate::types::{
     SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
     WithdrawalProposal, WithdrawalProposalFilter,
 };
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, BytesN, Env, Option, String, Vec};
 
 #[contract]
 pub struct Shade;

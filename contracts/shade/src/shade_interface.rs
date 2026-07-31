@@ -14,7 +14,7 @@ use crate::types::{
     Ticket, TokenAnalytics, Transaction, UpgradeProposal, WithdrawalProposal,
     WithdrawalProposalFilter,
 };
-use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{contracttrait, Address, BytesN, Env, Option, String, Vec};
 
 #[contracttrait]
 pub trait ShadeTrait {
@@ -486,4 +486,32 @@ pub trait ShadeTrait {
     ) -> CampaignParticipant;
     fn get_campaign_affiliate(env: Env, campaign_id: u64, affiliate: Address) -> CampaignAffiliate;
     fn get_campaign_leaderboard(env: Env, campaign_id: u64, limit: u32) -> Vec<(Address, i128)>;
+
+    fn set_campaign_royalty(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        royalty_bps: u32,
+        recipient: Option<Address>,
+    );
+    fn get_campaign_royalty_config(
+        env: Env,
+        campaign_id: u64,
+    ) -> Option<CampaignRoyaltyConfig>;
+    fn execute_campaign_secondary_sale(
+        env: Env,
+        seller: Address,
+        buyer: Address,
+        campaign_id: u64,
+        token: Address,
+        gross_amount: i128,
+    ) -> u64;
+    fn get_campaign_secondary_sale(env: Env, sale_id: u64) -> CampaignSecondarySale;
+    fn get_campaign_sale_count(env: Env) -> u64;
+    fn get_campaign_royalty_earnings(env: Env, campaign_id: u64) -> i128;
+    fn get_campaign_token_royalties(
+        env: Env,
+        campaign_id: u64,
+        token: Address,
+    ) -> i128;
 }
