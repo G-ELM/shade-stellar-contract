@@ -5,6 +5,7 @@
 //! snake_case form exceeds 32 chars panics at compile time, so event names here
 //! are deliberately kept short.
 
+use crate::types::{AnalyticsExport, CampaignStats, ExportFormat};
 use soroban_sdk::{contractevent, Address, BytesN, Env, String, Vec};
 
 // ── Existing events ───────────────────────────────────────────────────────────
@@ -3816,6 +3817,125 @@ pub fn publish_fiat_goal_closed_event(
         progress_bps,
         goal_reached,
         timestamp,
+    }
+    .publish(env);
+}
+
+// ── Campaign analytics exports ────────────────────────────────────────────────
+
+/// Emitted on every contribution an analytics-tracked campaign receives.
+///
+/// Carries the running aggregate rather than just the contribution, so an
+/// indexer can keep a campaign's dashboard current from this event alone
+/// without replaying the whole pledge history or reading contract state.
+#[contractevent]
+pub struct CampaignStatsUpdatedEvent {
+    pub campaign_id: u64,
+    pub backer: Address,
+    pub amount: i128,
+    /// Whether this contribution came from an address that had never
+    /// contributed before, which is what moved `backer_count`.
+    pub is_new_backer: bool,
+    pub pledge_count: u32,
+    pub backer_count: u32,
+    pub tracked_raised: i128,
+    pub average_pledge: i128,
+    pub largest_pledge: i128,
+    pub smallest_pledge: i128,
+    pub timestamp: u64,
+}
+
+pub fn publish_campaign_stats_updated_event(
+    env: &Env,
+    campaign_id: u64,
+    backer: Address,
+    amount: i128,
+    is_new_backer: bool,
+    stats: &CampaignStats,
+    average_pledge: i128,
+    timestamp: u64,
+) {
+    CampaignStatsUpdatedEvent {
+        campaign_id,
+        backer,
+        amount,
+        is_new_backer,
+        pledge_count: stats.pledge_count,
+        backer_count: stats.backer_count,
+        tracked_raised: stats.tracked_raised,
+        average_pledge,
+        largest_pledge: stats.largest_pledge,
+        smallest_pledge: stats.smallest_pledge,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a creator exports their campaign's analytics.
+///
+/// Mirrors the stored [`AnalyticsExport`] field for field: the record is the
+/// export, and the event is how off-chain tooling picks it up without polling.
+/// It carries the full structural context an indexer needs to render a file —
+/// which campaign and creator, the requested `format`, the export's position in
+/// its series, the window it covers, the cumulative figures, and the delta
+/// since the previous export — so no follow-up contract read is required.
+#[contractevent]
+pub struct AnalyticsExportEvent {
+    pub export_id: u64,
+    pub campaign_id: u64,
+    pub creator: Address,
+    pub merchant_id: u64,
+    pub token: Address,
+    pub format: ExportFormat,
+    pub sequence: u32,
+    pub period_start: u64,
+    pub period_end: u64,
+    pub campaign_raised: i128,
+    pub campaign_deadline: u64,
+    pub campaign_active: bool,
+    pub total_raised: i128,
+    pub pledge_count: u32,
+    pub backer_count: u32,
+    pub average_pledge: i128,
+    pub largest_pledge: i128,
+    pub smallest_pledge: i128,
+    pub first_pledge_at: u64,
+    pub last_pledge_at: u64,
+    pub period_raised: i128,
+    pub period_pledges: u32,
+    pub period_backers: u32,
+    pub timestamp: u64,
+}
+
+/// Takes the export record itself rather than two dozen positional arguments:
+/// at this field count a mistyped call site would silently transpose figures
+/// that no compiler check would catch.
+pub fn publish_analytics_export_event(env: &Env, export: &AnalyticsExport) {
+    AnalyticsExportEvent {
+        export_id: export.id,
+        campaign_id: export.campaign_id,
+        creator: export.creator.clone(),
+        merchant_id: export.merchant_id,
+        token: export.token.clone(),
+        format: export.format,
+        sequence: export.sequence,
+        period_start: export.period_start,
+        period_end: export.period_end,
+        campaign_raised: export.campaign_raised,
+        campaign_deadline: export.campaign_deadline,
+        campaign_active: export.campaign_active,
+        total_raised: export.total_raised,
+        pledge_count: export.pledge_count,
+        backer_count: export.backer_count,
+        average_pledge: export.average_pledge,
+        largest_pledge: export.largest_pledge,
+        smallest_pledge: export.smallest_pledge,
+        first_pledge_at: export.first_pledge_at,
+        last_pledge_at: export.last_pledge_at,
+        period_raised: export.period_raised,
+        period_pledges: export.period_pledges,
+        period_backers: export.period_backers,
+        timestamp: export.created_at,
     }
     .publish(env);
 }

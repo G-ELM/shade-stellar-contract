@@ -1,4 +1,4 @@
-use crate::components::admin;
+use crate::components::{admin, analytics};
 use crate::errors::{CampaignError, ContractError};
 use crate::events;
 use crate::types::{BackerCampaign, BackerKey, BackerPerk, BackerRewardTier, DataKey, Merchant};
@@ -149,6 +149,19 @@ pub fn assert_backer_campaign_owner(
     campaign
 }
 
+/// Whether `caller` is the merchant that owns `campaign`.
+///
+/// Unlike [`assert_backer_campaign_owner`] this answers rather than panics, and
+/// an address that is not a registered merchant at all is simply not the owner.
+/// Callers that want their own domain-specific error for a failed ownership
+/// check use this; the analytics component does.
+pub fn is_backer_campaign_owner(env: &Env, campaign: &BackerCampaign, caller: &Address) -> bool {
+    env.storage()
+        .persistent()
+        .get(&DataKey::MerchantId(caller.clone()))
+        .is_some_and(|merchant_id: u64| campaign.merchant_id == merchant_id)
+}
+
 pub fn set_backer_reward_tiers(
     env: &Env,
     merchant_addr: Address,
@@ -208,11 +221,16 @@ pub fn pledge_to_campaign(env: &Env, backer: Address, campaign_id: u64, amount: 
     events::publish_backer_pledge_recorded_event(
         env,
         campaign_id,
-        backer,
+        backer.clone(),
         amount,
         new_pledge,
         env.ledger().timestamp(),
     );
+
+    // Fold the contribution into the campaign's analytics aggregate. `prev == 0`
+    // is what makes this backer new; the read above already established it, so
+    // analytics does not pay for a second one.
+    analytics::record_pledge(env, campaign_id, &backer, amount, prev == 0);
 }
 
 pub fn get_backer_pledge(env: &Env, campaign_id: u64, backer: Address) -> i128 {

@@ -231,6 +231,32 @@ pub enum FiatGoalKey {
     BackerFiatContribution(u64, Address),
 }
 
+/// Campaign analytics and creator export storage keys.
+///
+/// A dedicated enum, like [`FiatGoalKey`], so this feature adds no cases to the
+/// near-full [`CampaignKey`] (Soroban caps every enum at 50 cases).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AnalyticsKey {
+    /// Running aggregate for one backer campaign *and* the cursor marking how
+    /// much of it has already been exported, keyed by `campaign_id`. The two
+    /// live in one entry deliberately: an export reads and writes them
+    /// together, so folding them into a single record halves both the rent and
+    /// the storage round-trips a snapshot costs.
+    CampaignStats(u64),
+    /// A stored export snapshot, keyed by its global ID.
+    AnalyticsExport(u64),
+    /// Running counter for export IDs (never decreases).
+    AnalyticsExportCount,
+    /// Reverse index: campaign_id -> its export IDs, in run order. Holds only
+    /// `u64` IDs rather than whole records, keeping the entry small, and is
+    /// capped so it cannot grow without bound. There is deliberately no
+    /// creator-keyed twin: campaign ownership is 1:1 with the creator and every
+    /// export event carries the creator address, so a second index would pay
+    /// rent for something the emitted events already answer.
+    CampaignExports(u64),
+}
+
 /// NFT reward storage keys.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1233,6 +1259,110 @@ pub struct FiatGoalQuote {
     pub progress_bps: u32,
     pub status: FiatGoalStatus,
     pub quoted_at: u64,
+}
+
+// ── Campaign analytics exports ────────────────────────────────────────────────
+
+/// Serialization a creator wants an export rendered as off-chain.
+///
+/// The contract does not build the file — it publishes the figures and the
+/// format the creator asked for, and indexers render the bytes. Storing the
+/// intent on-chain is what makes an export reproducible: anyone can rebuild the
+/// same file from the same snapshot.
+#[contracttype]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ExportFormat {
+    /// One header row plus one row of figures.
+    Csv,
+    /// A single JSON object.
+    Json,
+    /// Newline-delimited JSON, one object per export in a series.
+    Ndjson,
+}
+
+/// Running contribution aggregate for one backer campaign, plus the cursor
+/// marking how much of it previous exports have already covered.
+///
+/// Counters accrue from contributions recorded *after* this component shipped.
+/// A campaign that raised funds before then keeps that raise in its own
+/// `BackerCampaign::raised`, which stays authoritative; `tracked_raised` is the
+/// slice this component actually observed. Exports carry both, so a consumer
+/// can always tell the two apart rather than silently reading a short total as
+/// the whole raise.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CampaignStats {
+    pub campaign_id: u64,
+    /// Contributions recorded since tracking began.
+    pub pledge_count: u32,
+    /// Distinct addresses that have contributed since tracking began.
+    pub backer_count: u32,
+    /// Token base units contributed since tracking began.
+    pub tracked_raised: i128,
+    /// Largest single contribution; `0` before the first one.
+    pub largest_pledge: i128,
+    /// Smallest single contribution; `0` before the first one.
+    pub smallest_pledge: i128,
+    pub first_pledge_at: u64,
+    pub last_pledge_at: u64,
+    // ── Export cursor ──
+    /// Exports run against this campaign so far.
+    pub export_count: u32,
+    /// ID of the most recent export; `0` before the first one.
+    pub last_export_id: u64,
+    /// Ledger time of the most recent export; `0` before the first one.
+    pub last_export_at: u64,
+    /// Counters as of the last export. The difference against the live figures
+    /// above is what the next export reports as its period delta, which is why
+    /// two exports in the same ledger second still partition the data exactly.
+    pub exported_pledge_count: u32,
+    pub exported_backer_count: u32,
+    pub exported_raised: i128,
+}
+
+/// An immutable analytics snapshot a creator exported for one campaign.
+///
+/// Consecutive exports partition the campaign's timeline: each one covers
+/// everything since the previous one's `period_end`, so a creator can pull
+/// incremental deltas rather than re-reading the whole history every time.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AnalyticsExport {
+    pub id: u64,
+    pub campaign_id: u64,
+    /// The campaign's owning merchant, who authorized this export.
+    pub creator: Address,
+    pub merchant_id: u64,
+    pub token: Address,
+    pub format: ExportFormat,
+    /// 1-based position in this campaign's export series.
+    pub sequence: u32,
+    /// Start of the window this export covers: the previous export's
+    /// `period_end`, or `0` for the first export in a series.
+    pub period_start: u64,
+    /// End of the window, always the ledger time the export ran.
+    pub period_end: u64,
+    // ── Campaign context ──
+    /// The campaign's own raise total, authoritative even for contributions
+    /// taken before analytics tracking began.
+    pub campaign_raised: i128,
+    pub campaign_deadline: u64,
+    pub campaign_active: bool,
+    // ── Cumulative, as observed by analytics tracking ──
+    pub total_raised: i128,
+    pub pledge_count: u32,
+    pub backer_count: u32,
+    /// `total_raised / pledge_count`, truncated.
+    pub average_pledge: i128,
+    pub largest_pledge: i128,
+    pub smallest_pledge: i128,
+    pub first_pledge_at: u64,
+    pub last_pledge_at: u64,
+    // ── Delta since the previous export ──
+    pub period_raised: i128,
+    pub period_pledges: u32,
+    pub period_backers: u32,
+    pub created_at: u64,
 }
 
 // ── NFT rewards ───────────────────────────────────────────────────────────────

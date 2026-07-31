@@ -5,14 +5,15 @@
 //! a method to the impl without declaring it here is a compile error.
 
 use crate::types::{
-    BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignTag, CreatorVesting,
-    CrossChainBridgePayload, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, FiatGoalQuote,
-    Invoice, InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary,
-    MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit,
-    Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
-    SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
-    WithdrawalProposal, WithdrawalProposalFilter,
+    AnalyticsExport, BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate,
+    CampaignCategory, CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignStats,
+    CampaignTag, CreatorVesting, CrossChainBridgePayload, DonorInfo, Escrow, Event, EventFilter,
+    ExportFormat, FeeCampaign, FiatGoalQuote, Invoice, InvoiceFilter, InvoicePage, Merchant,
+    MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft, NftCollection,
+    OracleConfig, PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role, StretchGoal,
+    StretchGoalReward, Subscription, SubscriptionFilter, SubscriptionPlan, SubscriptionPlanFilter,
+    Ticket, TokenAnalytics, Transaction, UpgradeProposal, WithdrawalProposal,
+    WithdrawalProposalFilter,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, Option, String, Vec};
 
@@ -554,4 +555,24 @@ pub trait ShadeTrait {
     fn get_backer_fiat_contribution(env: Env, campaign_id: u64, backer: Address) -> i128;
     /// Pegs across a merchant's campaigns, in campaign-creation order.
     fn get_merchant_fiat_goals(env: Env, merchant_id: u64) -> Vec<CampaignFiatGoal>;
+
+    // ── Campaign analytics exports ────────────────────────────────────────────
+
+    /// Snapshots a campaign's analytics into an immutable export record and
+    /// emits it for off-chain rendering, returning the export's ID. Owning
+    /// merchant only; each export reports the delta since the campaign's
+    /// previous one alongside the cumulative figures.
+    fn export_campaign_analytics(
+        env: Env,
+        creator: Address,
+        campaign_id: u64,
+        format: ExportFormat,
+    ) -> u64;
+    /// A campaign's running contribution aggregate, as exports snapshot it.
+    fn get_campaign_stats(env: Env, campaign_id: u64) -> CampaignStats;
+    fn get_analytics_export(env: Env, export_id: u64) -> AnalyticsExport;
+    /// Export IDs for a campaign, in the order they were run.
+    fn get_campaign_exports(env: Env, campaign_id: u64) -> Vec<u64>;
+    /// The most recent export for a campaign.
+    fn get_latest_campaign_export(env: Env, campaign_id: u64) -> AnalyticsExport;
 }

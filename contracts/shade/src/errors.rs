@@ -20,6 +20,7 @@
 //! | 240–259   | [`StretchGoalError`]|
 //! | 260–279   | [`VestingError`]    |
 //! | 280–299   | [`FiatGoalError`]   |
+//! | 300–319   | [`AnalyticsError`]  |
 
 use soroban_sdk::contracterror;
 
@@ -306,4 +307,22 @@ pub enum FiatGoalError {
     /// The contribution is worth less than one minor unit of the goal's
     /// currency at the current price, so crediting it would round to nothing.
     FiatValueTooSmall = 287,
+}
+
+/// Campaign analytics export errors. Codes 300–319.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum AnalyticsError {
+    /// No export exists under the supplied ID.
+    AnalyticsExportNotFound = 300,
+    /// The caller is not the merchant that owns the campaign being exported.
+    NotAnalyticsExportOwner = 301,
+    /// The campaign has neither tracked contributions nor a raise of its own,
+    /// so an export would snapshot an empty dataset and pay rent for nothing.
+    NothingToExport = 302,
+    /// This campaign has already run the maximum number of exports.
+    TooManyExports = 303,
+    /// The campaign has never been exported.
+    NoExportsYet = 304,
 }
