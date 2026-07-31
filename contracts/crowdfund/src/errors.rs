@@ -70,4 +70,22 @@ pub enum CrowdfundError {
     BadgeNotEligible = 35,
     // Badge eligibility thresholds have not been configured by the organizer.
     BadgeConfigNotSet = 36,
+    // ── Social recovery / guardians ─────────────────────────────────────────
+    // No guardian set has been configured for this campaign.
+    GuardiansNotSet = 37,
+    // The same address appears twice in the supplied guardian list.
+    DuplicateGuardian = 38,
+    // Threshold must be non-zero and no greater than the number of guardians.
+    InvalidThreshold = 39,
+    // A recovery is already pending; cancel it before starting another.
+    RecoveryAlreadyPending = 40,
+    // No recovery is currently pending.
+    NoPendingRecovery = 41,
+    // The caller is not in the registered guardian set.
+    NotGuardian = 42,
+    // This guardian has already approved the pending recovery.
+    AlreadyApprovedRecovery = 43,
+    // ── KYC gating ──────────────────────────────────────────────────────────
+    // The campaign requires KYC and the contributor is not verified.
+    KYCRequired = 44,
 }
