@@ -4,6 +4,7 @@ pub mod admin;
 // pub mod auto_withdrawal; // TODO: references missing types/events — disabled for compilation
 pub mod auto_withdrawal;
 pub mod campaigns;
+pub mod campaign_royalties;
 pub mod bridge;
 pub mod core;
 pub mod event;
