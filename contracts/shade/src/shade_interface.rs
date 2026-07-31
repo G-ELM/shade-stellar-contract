@@ -6,12 +6,12 @@
 
 use crate::types::{
     BackerCampaign, BackerRewardTier, BridgeDeposit, Campaign, CampaignAffiliate, CampaignCategory,
-    CampaignFilter, CampaignParticipant, CampaignTag, CreatorVesting, CrossChainBridgePayload,
-    DonorInfo, Escrow, Event, EventFilter, FeeCampaign, Invoice, InvoiceFilter, InvoicePage,
-    Merchant, MerchantAnalytics, MerchantAnalyticsSummary, MerchantFilter, MerchantPage, Nft,
-    NftCollection, OracleConfig, PendingFee, PlatformFeeSplit, Pledge, PledgeCampaign, Role,
-    StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter, SubscriptionPlan,
-    SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
+    CampaignFiatGoal, CampaignFilter, CampaignParticipant, CampaignTag, CreatorVesting,
+    CrossChainBridgePayload, DonorInfo, Escrow, Event, EventFilter, FeeCampaign, FiatGoalQuote,
+    Invoice, InvoiceFilter, InvoicePage, Merchant, MerchantAnalytics, MerchantAnalyticsSummary,
+    MerchantFilter, MerchantPage, Nft, NftCollection, OracleConfig, PendingFee, PlatformFeeSplit,
+    Pledge, PledgeCampaign, Role, StretchGoal, StretchGoalReward, Subscription, SubscriptionFilter,
+    SubscriptionPlan, SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
     WithdrawalProposal, WithdrawalProposalFilter,
 };
 use soroban_sdk::{contracttrait, Address, BytesN, Env, Option, String, Vec};
@@ -515,4 +515,43 @@ pub trait ShadeTrait {
     fn get_releasable_amount(env: Env, campaign_id: u64) -> i128;
     /// Campaign IDs this creator vests funds from, in creation order.
     fn get_creator_vesting_campaigns(env: Env, creator: Address) -> Vec<u64>;
+
+    // ── Fiat-pegged campaign goals ────────────────────────────────────────────
+
+    /// Pegs a campaign's funding target to a fiat currency, valued through the
+    /// campaign token's price oracle. Owning merchant only, once per campaign;
+    /// the published target is immutable.
+    fn set_campaign_fiat_goal(
+        env: Env,
+        merchant: Address,
+        campaign_id: u64,
+        currency: String,
+        goal_amount: i128,
+        decimals: u32,
+    );
+    /// Values a token contribution against a campaign's fiat peg and credits
+    /// the fiat figure to the goal, returning it.
+    fn record_fiat_contribution(
+        env: Env,
+        contributor: Address,
+        campaign_id: u64,
+        token_amount: i128,
+    ) -> i128;
+    /// Re-reads the oracle and publishes a fresh on-ledger valuation. Owning
+    /// merchant only; use `get_campaign_fiat_goal_quote` for a read-only view.
+    fn refresh_campaign_fiat_quote(env: Env, merchant: Address, campaign_id: u64) -> FiatGoalQuote;
+    /// Stops further contributions being valued against a peg. Owning merchant
+    /// or admin; the raised total is preserved.
+    fn close_campaign_fiat_goal(env: Env, caller: Address, campaign_id: u64);
+    fn get_campaign_fiat_goal(env: Env, campaign_id: u64) -> CampaignFiatGoal;
+    /// Whether this campaign's goal is fiat-pegged.
+    fn has_campaign_fiat_goal(env: Env, campaign_id: u64) -> bool;
+    /// Live valuation of a peg at the current oracle price.
+    fn get_campaign_fiat_goal_quote(env: Env, campaign_id: u64) -> FiatGoalQuote;
+    /// Fiat a token contribution would be credited at right now.
+    fn quote_fiat_contribution(env: Env, campaign_id: u64, token_amount: i128) -> i128;
+    /// Cumulative fiat one backer has contributed to a campaign.
+    fn get_backer_fiat_contribution(env: Env, campaign_id: u64, backer: Address) -> i128;
+    /// Pegs across a merchant's campaigns, in campaign-creation order.
+    fn get_merchant_fiat_goals(env: Env, merchant_id: u64) -> Vec<CampaignFiatGoal>;
 }

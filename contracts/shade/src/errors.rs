@@ -19,6 +19,7 @@
 //! | 200–239   | [`CampaignError`]   |
 //! | 240–259   | [`StretchGoalError`]|
 //! | 260–279   | [`VestingError`]    |
+//! | 280–299   | [`FiatGoalError`]   |
 
 use soroban_sdk::contracterror;
 
@@ -279,4 +280,30 @@ pub enum VestingError {
     InvalidVestingStart = 269,
     /// This creator already holds the maximum number of vesting schedules.
     TooManyVestingSchedules = 270,
+}
+
+/// Fiat-pegged campaign goal errors. Codes 280–299.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum FiatGoalError {
+    /// No fiat-pegged goal exists for the supplied campaign.
+    FiatGoalNotFound = 280,
+    /// The campaign already has a fiat goal; the peg is immutable once
+    /// published so backers can rely on the target they were shown.
+    FiatGoalAlreadyExists = 281,
+    /// The fiat target must be positive.
+    InvalidFiatGoalAmount = 282,
+    /// The quote currency is empty or longer than the accepted maximum.
+    InvalidFiatCurrency = 283,
+    /// `decimals` exceeds the accepted maximum, or an oracle's configured
+    /// decimals are large enough to overflow the conversion.
+    InvalidFiatDecimals = 284,
+    /// The goal has been wound down; no further contributions are valued.
+    FiatGoalClosed = 285,
+    /// The caller is not the merchant that owns the pegged campaign.
+    NotFiatGoalOwner = 286,
+    /// The contribution is worth less than one minor unit of the goal's
+    /// currency at the current price, so crediting it would round to nothing.
+    FiatValueTooSmall = 287,
 }

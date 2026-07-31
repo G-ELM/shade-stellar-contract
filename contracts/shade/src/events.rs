@@ -3581,3 +3581,241 @@ pub fn publish_pledge_campaign_created_event(
     }
     .publish(env);
 }
+
+// ── Fiat-pegged campaign goals ────────────────────────────────────────────────
+
+/// Emitted when a merchant pegs a campaign's funding target to a fiat currency
+/// (see [`crate::types::CampaignFiatGoal`]).
+///
+/// Carries the oracle and the seed price alongside the target so an indexer can
+/// render the campaign, and reproduce every later valuation, from this one event.
+#[contractevent]
+pub struct CampaignFiatGoalSetEvent {
+    pub campaign_id: u64,
+    pub merchant: Address,
+    pub token: Address,
+    pub currency: String,
+    pub goal_amount: i128,
+    pub decimals: u32,
+    pub oracle: Address,
+    pub price: i128,
+    pub price_decimals: u32,
+    /// Token base units the target is worth at `price`, for display only — the
+    /// figure moves with the price and is never stored.
+    pub token_goal_estimate: i128,
+    pub deadline: u64,
+    pub timestamp: u64,
+}
+
+pub fn publish_campaign_fiat_goal_set_event(
+    env: &Env,
+    campaign_id: u64,
+    merchant: Address,
+    token: Address,
+    currency: String,
+    goal_amount: i128,
+    decimals: u32,
+    oracle: Address,
+    price: i128,
+    price_decimals: u32,
+    token_goal_estimate: i128,
+    deadline: u64,
+    timestamp: u64,
+) {
+    CampaignFiatGoalSetEvent {
+        campaign_id,
+        merchant,
+        token,
+        currency,
+        goal_amount,
+        decimals,
+        oracle,
+        price,
+        price_decimals,
+        token_goal_estimate,
+        deadline,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted for every contribution valued against a fiat-pegged goal.
+///
+/// `price` is the snapshot the contribution was credited at, so the pair
+/// (`token_amount`, `fiat_amount`) is independently verifiable after the fact.
+#[contractevent]
+pub struct FiatContributionEvent {
+    pub campaign_id: u64,
+    pub contributor: Address,
+    pub token: Address,
+    pub token_amount: i128,
+    pub fiat_amount: i128,
+    pub currency: String,
+    pub price: i128,
+    pub price_decimals: u32,
+    pub raised_amount: i128,
+    pub goal_amount: i128,
+    pub progress_bps: u32,
+    pub timestamp: u64,
+}
+
+pub fn publish_fiat_contribution_event(
+    env: &Env,
+    campaign_id: u64,
+    contributor: Address,
+    token: Address,
+    token_amount: i128,
+    fiat_amount: i128,
+    currency: String,
+    price: i128,
+    price_decimals: u32,
+    raised_amount: i128,
+    goal_amount: i128,
+    progress_bps: u32,
+    timestamp: u64,
+) {
+    FiatContributionEvent {
+        campaign_id,
+        contributor,
+        token,
+        token_amount,
+        fiat_amount,
+        currency,
+        price,
+        price_decimals,
+        raised_amount,
+        goal_amount,
+        progress_bps,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted once, on the contribution that first carries a fiat-pegged goal to
+/// its target.
+#[contractevent]
+pub struct FiatGoalReachedEvent {
+    pub campaign_id: u64,
+    pub merchant: Address,
+    pub currency: String,
+    pub goal_amount: i128,
+    pub raised_amount: i128,
+    /// Token base units it took to get there. Differs from what the target was
+    /// originally worth whenever the price moved during the raise.
+    pub raised_tokens: i128,
+    pub contribution_count: u32,
+    pub timestamp: u64,
+}
+
+pub fn publish_fiat_goal_reached_event(
+    env: &Env,
+    campaign_id: u64,
+    merchant: Address,
+    currency: String,
+    goal_amount: i128,
+    raised_amount: i128,
+    raised_tokens: i128,
+    contribution_count: u32,
+    timestamp: u64,
+) {
+    FiatGoalReachedEvent {
+        campaign_id,
+        merchant,
+        currency,
+        goal_amount,
+        raised_amount,
+        raised_tokens,
+        contribution_count,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when the owning merchant re-reads the oracle to publish a fresh
+/// valuation of a fiat-pegged goal, for indexers that track the shortfall
+/// between contributions.
+#[contractevent]
+pub struct FiatGoalQuoteEvent {
+    pub campaign_id: u64,
+    pub token: Address,
+    pub currency: String,
+    pub price: i128,
+    pub price_decimals: u32,
+    pub raised_amount: i128,
+    pub goal_amount: i128,
+    pub remaining_amount: i128,
+    pub tokens_required: i128,
+    pub progress_bps: u32,
+    pub timestamp: u64,
+}
+
+pub fn publish_fiat_goal_quote_event(
+    env: &Env,
+    campaign_id: u64,
+    token: Address,
+    currency: String,
+    price: i128,
+    price_decimals: u32,
+    raised_amount: i128,
+    goal_amount: i128,
+    remaining_amount: i128,
+    tokens_required: i128,
+    progress_bps: u32,
+    timestamp: u64,
+) {
+    FiatGoalQuoteEvent {
+        campaign_id,
+        token,
+        currency,
+        price,
+        price_decimals,
+        raised_amount,
+        goal_amount,
+        remaining_amount,
+        tokens_required,
+        progress_bps,
+        timestamp,
+    }
+    .publish(env);
+}
+
+/// Emitted when a fiat-pegged goal is wound down. `goal_reached` records
+/// whether it made its target, which is what decides fulfilment off-chain.
+#[contractevent]
+pub struct FiatGoalClosedEvent {
+    pub campaign_id: u64,
+    pub caller: Address,
+    pub currency: String,
+    pub goal_amount: i128,
+    pub raised_amount: i128,
+    pub raised_tokens: i128,
+    pub progress_bps: u32,
+    pub goal_reached: bool,
+    pub timestamp: u64,
+}
+
+pub fn publish_fiat_goal_closed_event(
+    env: &Env,
+    campaign_id: u64,
+    caller: Address,
+    currency: String,
+    goal_amount: i128,
+    raised_amount: i128,
+    raised_tokens: i128,
+    progress_bps: u32,
+    goal_reached: bool,
+    timestamp: u64,
+) {
+    FiatGoalClosedEvent {
+        campaign_id,
+        caller,
+        currency,
+        goal_amount,
+        raised_amount,
+        raised_tokens,
+        progress_bps,
+        goal_reached,
+        timestamp,
+    }
+    .publish(env);
+}
