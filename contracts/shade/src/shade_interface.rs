@@ -14,7 +14,7 @@ use crate::types::{
     SubscriptionPlanFilter, Ticket, TokenAnalytics, Transaction, UpgradeProposal,
     WithdrawalProposal, WithdrawalProposalFilter,
 };
-use soroban_sdk::{contracttrait, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{contracttrait, Address, BytesN, Env, Option, String, Vec};
 
 #[contracttrait]
 pub trait ShadeTrait {
