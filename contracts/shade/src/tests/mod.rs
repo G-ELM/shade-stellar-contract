@@ -7,7 +7,6 @@ pub mod test_admin_transfer;
 pub mod test_auto_withdrawal;
 pub mod test_bridge;
 pub mod test_fee_discount;
-// pub mod test_batch_token_whitelist;
 pub mod test_analytics_aggregation;
 pub mod test_calculate_fee;
 // The campaign-refunds component (finalize_campaign, process_failed_campaign_refunds,
@@ -38,6 +37,8 @@ pub mod test_merchant_key;
 pub mod test_merchant_tokens;
 pub mod test_merchant_verification;
 pub mod test_merchant_webhook;
+pub mod test_nft_rewards;
+pub mod test_backer_rewards;
 pub mod test_pausable;
 pub mod test_payment;
 pub mod test_payment_payload;
